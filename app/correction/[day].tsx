@@ -56,7 +56,7 @@ function CorrectionReady() {
       title="Correction"
       subtitle={`${formatDay(series.day)} · niveau ${series.level}`}
       footer={
-        <Button label="Retour à aujourd’hui" onPress={() => router.replace('/')} />
+        <Button label="Retour" onPress={() => router.replace('/')} />
       }
     >
       <Card>

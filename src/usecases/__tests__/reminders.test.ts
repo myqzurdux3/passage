@@ -78,3 +78,17 @@ describe('cancelDailyReminder', () => {
     expect(notifications.cancelAllScheduledNotificationsAsync).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('module indisponible', () => {
+  it('ne planifie rien et ne lève pas quand expo-notifications est absent', async () => {
+    jest.isolateModules(() => undefined);
+    notifications.getPermissionsAsync.mockRejectedValue(new Error('module absent'));
+
+    await expect(scheduleDailyReminder(19, 0)).resolves.toBe(false);
+  });
+
+  it("n'échoue pas si l'annulation lève", async () => {
+    notifications.cancelAllScheduledNotificationsAsync.mockRejectedValue(new Error('boom'));
+    await expect(cancelDailyReminder()).resolves.toBeUndefined();
+  });
+});

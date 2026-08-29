@@ -2,6 +2,8 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { AppError } from '../src/ai/errors';
+import { localDay } from '../src/core/date';
+import { currentStreak } from '../src/core/streak';
 import { getTodaySeries } from '../src/usecases/getTodaySeries';
 import { submitAnswers } from '../src/usecases/submitAnswers';
 import type { StoredSeries } from '../src/data/seriesRepository';
@@ -42,7 +44,6 @@ function TodayReady() {
       setDrafts(
         Object.fromEntries(today.sentences.map((s) => [s.position, s.user_en ?? ''])),
       );
-      if (today.status === 'corrected') router.replace(`/correction/${today.day}`);
     } catch (e) {
       setError(e instanceof AppError ? e : new AppError('api_error'));
     } finally {
@@ -119,6 +120,10 @@ function TodayReady() {
 
   if (!series) return null;
 
+  // Série déjà corrigée : on n'a plus rien à saisir. Rediriger vers la
+  // correction enfermerait l'utilisateur — elle-même renvoie ici.
+  if (series.status === 'corrected') return <DoneToday series={series} />;
+
   return (
     <Screen
       title="Aujourd’hui"
@@ -154,6 +159,44 @@ function TodayReady() {
           </Text>
         </Pressable>
       </View>
+    </Screen>
+  );
+}
+
+function DoneToday({ series }: { series: StoredSeries }) {
+  const deps = useDeps();
+  const theme = useThemeContext();
+  const router = useRouter();
+
+  const scored = series.sentences.filter((s) => s.score !== null);
+  const average =
+    scored.length > 0
+      ? Math.round((scored.reduce((sum, s) => sum + (s.score ?? 0), 0) / scored.length) * 10) / 10
+      : null;
+  const streak = currentStreak(deps.stats.correctedDays(), localDay(deps.now()));
+
+  return (
+    <Screen title="C’est fait" subtitle="Reviens demain pour cinq nouvelles phrases.">
+      <Card>
+        <Text
+          style={[theme.type.title, { color: theme.colors.text, fontFamily: theme.fonts.serif }]}
+        >
+          {average ?? '—'} / 10
+        </Text>
+        <Text style={[theme.type.body, { color: theme.colors.textMuted }]}>
+          Moyenne du jour · {streak} jour{streak > 1 ? 's' : ''} d’affilée
+        </Text>
+      </Card>
+
+      <Button
+        label="Revoir la correction"
+        onPress={() => router.push(`/correction/${series.day}`)}
+      />
+      <Button
+        label="Historique"
+        variant="secondary"
+        onPress={() => router.push('/history')}
+      />
     </Screen>
   );
 }
