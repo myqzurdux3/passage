@@ -98,3 +98,27 @@ describe('wipeAllData', () => {
     expect(series.findByDay('2026-08-30')!.sentences).toHaveLength(5);
   });
 });
+
+describe('SeriesRepository.remove', () => {
+  it('supprime aussi phrases et réponses sans clés étrangères', () => {
+    const db = makeDbWithoutForeignKeys();
+    seed(db);
+    const series = new SeriesRepository(db);
+
+    series.remove(series.findByDay('2026-08-29')!.id);
+
+    expect(counts(db)).toMatchObject({ series: 0, sentence: 0, answer: 0 });
+  });
+
+  it('ne touche pas aux autres séries', () => {
+    const db = makeDbWithoutForeignKeys();
+    seed(db);
+    const series = new SeriesRepository(db);
+    series.insert('2026-08-30', 'B1', sentences);
+
+    series.remove(series.findByDay('2026-08-29')!.id);
+
+    expect(series.findByDay('2026-08-30')!.sentences).toHaveLength(5);
+    expect(counts(db).sentence).toBe(5);
+  });
+});

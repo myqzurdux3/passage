@@ -126,9 +126,23 @@ export class SeriesRepository {
     });
   }
 
-  /** Supprime une série et, par cascade, ses phrases et ses réponses. */
+  /**
+   * Supprime une série avec ses phrases et ses réponses.
+   *
+   * Les enfants sont supprimés explicitement plutôt que par cascade : celle-ci
+   * dépend de `PRAGMA foreign_keys`, qui est bien actif mais reste une
+   * hypothèse qu'on ne peut pas observer depuis un binaire de production.
+   * Ici l'effacement est vrai dans tous les cas.
+   */
   remove(seriesId: number): void {
-    this.db.run('DELETE FROM series WHERE id = ?', [seriesId]);
+    this.db.transaction(() => {
+      this.db.run(
+        'DELETE FROM answer WHERE sentence_id IN (SELECT id FROM sentence WHERE series_id = ?)',
+        [seriesId],
+      );
+      this.db.run('DELETE FROM sentence WHERE series_id = ?', [seriesId]);
+      this.db.run('DELETE FROM series WHERE id = ?', [seriesId]);
+    });
   }
 
   setStatus(seriesId: number, status: SeriesStatus): void {
