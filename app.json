@@ -28,13 +28,17 @@
       "expo-router",
       "expo-secure-store",
       "expo-font",
-      "expo-sqlite",
-      "expo-splash-screen"
-    ],
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FBF9F4"
-    }
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FBF9F4",
+          "dark": {
+            "backgroundColor": "#121110"
+          }
+        }
+      ]
+    ]
   }
 }
