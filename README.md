@@ -71,6 +71,27 @@ Deux contraintes de l'environnement Expo Go, toutes deux traitées dans le code 
 
 Pour un rappel qui fonctionne vraiment, il faut un *development build*.
 
+## Installer sur un téléphone
+
+Expo Go ne suffit pas pour le rappel quotidien. Pour une vraie app installée :
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64   # Gradle refuse le JDK 25
+npx expo run:android --variant release
+```
+
+`expo prebuild` génère `android/` (ignoré par git, régénérable). Le premier
+build prend une vingtaine de minutes ; il compile par défaut les quatre
+architectures alors qu'un téléphone récent n'en utilise qu'une. Pour diviser le
+temps par quatre, après le premier prebuild :
+
+```
+# android/gradle.properties
+reactNativeArchitectures=arm64-v8a
+```
+
+Le paquet installé est `com.passage.app`.
+
 ## Tests
 
 ```bash
