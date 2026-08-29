@@ -15,7 +15,7 @@ describe('SentenceInput', () => {
     await render(
       <SentenceInput position={1} total={5} sourceFr="Il pleut." value="" onChange={onChange} />,
     );
-    fireEvent.changeText(screen.getByLabelText('Traduction de la phrase 1'), "It's raining.");
+    await fireEvent.changeText(screen.getByLabelText('Traduction de la phrase 1'), "It's raining.");
     expect(onChange).toHaveBeenCalledWith("It's raining.");
   });
 });
