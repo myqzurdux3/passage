@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { Deps } from '../app/deps';
+import type { Deps } from '../usecases/deps';
 import {
   clearApiKey,
   getDb,
@@ -15,13 +15,13 @@ import {
   readApiKey,
   wipeLocalData,
   writeApiKey,
-} from '../app/container';
-import { prefetchTomorrow } from '../app/prefetchTomorrow';
-import { cancelDailyReminder, scheduleDailyReminder } from '../app/reminders';
-import { retryPendingCorrection } from '../app/retryPendingCorrection';
+} from '../usecases/container';
+import { prefetchTomorrow } from '../usecases/prefetchTomorrow';
+import { cancelDailyReminder, scheduleDailyReminder } from '../usecases/reminders';
+import { retryPendingCorrection } from '../usecases/retryPendingCorrection';
 import { SETTING_KEYS, SettingsRepository } from '../data/settingsRepository';
 import type { Level } from '../core/levels';
-import { DEFAULT_BASE_LEVEL } from '../app/getTodaySeries';
+import { DEFAULT_BASE_LEVEL } from '../usecases/getTodaySeries';
 import type { ThemePreference } from './theme';
 
 export type Settings = {

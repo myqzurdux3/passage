@@ -35,10 +35,14 @@ Cinq couches, dépendances descendantes :
 |---|---|
 | `app/` | routes `expo-router` : les cinq écrans |
 | `src/ui/` | thème, composants partagés, fournisseur applicatif |
-| `src/app/` | cas d'usage : série du jour, correction, prefetch, reprise |
+| `src/usecases/` | cas d'usage : série du jour, correction, prefetch, reprise |
 | `src/ai/` | client Claude, prompts, schémas, type d'erreur fermé |
 | `src/data/` | SQLite : schéma, migrations, dépôts |
 | `src/core/` | logique pure : niveaux, diff, étiquettes, série de jours |
+
+Les cas d'usage vivent dans `src/usecases/` et non `src/app/` : `src/app` est une
+racine de routes réservée par `expo-router`, qui la préfère silencieusement au
+`app/` de la racine et n'aurait chargé aucun écran.
 
 Deux appels par jour : un pour générer les cinq phrases, un pour corriger les
 cinq réponses d'un coup. La série du lendemain est pré-générée dès qu'une

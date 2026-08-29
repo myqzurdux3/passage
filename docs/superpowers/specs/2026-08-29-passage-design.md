@@ -69,15 +69,15 @@ sans celle du dessus.
 ```
 src/
   ui/          écrans, composants, thème         (React)
-  app/         orchestration : cas d'usage       (pur + async)
+  usecases/    orchestration : cas d'usage       (pur + async)
   ai/          client Claude, prompts, schémas   (bordure réseau)
   data/        SQLite, dépôts, migrations        (bordure disque)
   core/        logique pure : niveau, diff, tags (aucune dépendance)
 ```
 
 `core/` ne connaît rien. `data/` et `ai/` sont des bordures, chacune derrière
-une interface que `app/` consomme. `ui/` ne parle jamais directement à `ai/`
-ou `data/` : il passe par `app/`.
+une interface que `usecases/` consomme. `ui/` ne parle jamais directement à `ai/`
+ou `data/` : il passe par `usecases/`.
 
 ### 5.1 `core/` — logique pure
 
@@ -218,7 +218,7 @@ Les erreurs sont converties en un type fermé avant de remonter :
 | `parsed_output` nul | `bad_response` | une nouvelle tentative, puis échec explicite |
 | autre `APIError` | `api_error` | message avec le code d'état |
 
-### 5.4 `app/` — orchestration
+### 5.4 `usecases/` — orchestration
 
 **`getTodaySeries()`**
 1. Une série existe pour aujourd'hui → la rendre.
@@ -300,7 +300,7 @@ L'ordre suit la structure : la logique pure d'abord, l'interface en dernier.
 | `core/streak.ts` | horloge injectée : jours consécutifs, rupture, jour même |
 | `data/*` | `better-sqlite3` en mémoire : migrations, transitions d'état, cascades |
 | `ai/*` | SDK simulé : assemblage du prompt, correspondance des schémas, table des erreurs |
-| `app/*` | dépôts et client simulés : les quatre cas d'usage, chemins hors-ligne |
+| `usecases/*` | dépôts et client simulés : les quatre cas d'usage, chemins hors-ligne |
 | `ui/*` | `@testing-library/react-native` : saisie, activation du bouton, rendu du diff |
 
 Aucun test ne touche l'API réelle. Un script séparé, lancé à la main, fait un

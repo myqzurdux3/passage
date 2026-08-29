@@ -6,7 +6,7 @@ module.exports = {
       transform: {
         '^.+\\.tsx?$': ['babel-jest', { presets: [['babel-preset-expo', { jsxRuntime: 'automatic' }]] }],
       },
-      testMatch: ['<rootDir>/src/{core,data,ai,app}/**/__tests__/**/*.test.ts'],
+      testMatch: ['<rootDir>/src/{core,data,ai,usecases}/**/__tests__/**/*.test.ts'],
     },
     {
       displayName: 'ui',
