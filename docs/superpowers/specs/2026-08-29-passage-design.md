@@ -1,7 +1,9 @@
 # Passage — conception
 
 **Date :** 2026-08-29
-**Statut :** validé (approches A/B/C présentées, B retenue)
+**Statut :** validé (approches A/B/C présentées, B retenue).
+**Révisé le 2026-08-29** après audit : les écarts entre ce document et le code
+ont été corrigés ici, pas dans le code — sauf mention contraire.
 
 ## 1. Objet
 
@@ -54,7 +56,7 @@ Le mot est identique en français et en anglais.
 | Notifications | `expo-notifications` | rappel local quotidien |
 | IA | `@anthropic-ai/sdk` + `zod` | sorties structurées via `messages.parse()` |
 | Dessin | `react-native-svg` | logo et icônes vectoriels |
-| Tests | `jest-expo`, `@testing-library/react-native`, `better-sqlite3` | logique pure, dépôts, composants |
+| Tests | `jest-expo`, `@testing-library/react-native`, `node:sqlite` | logique pure, dépôts, composants |
 
 Modèle : `claude-opus-5`, pensée adaptative.
 `effort: "low"` pour la génération (tâche simple), `effort: "high"` pour la
@@ -63,7 +65,7 @@ Appels non-streamés, `max_tokens: 16000`.
 
 ## 5. Architecture
 
-Quatre couches, dépendances dirigées vers le bas. Chaque couche est testable
+Cinq couches, dépendances dirigées vers le bas. Chaque couche est testable
 sans celle du dessus.
 
 ```
@@ -81,9 +83,9 @@ ou `data/` : il passe par `usecases/`.
 
 ### 5.1 `core/` — logique pure
 
-Quatre modules, aucun effet de bord, testés en priorité.
+Six modules, aucun effet de bord, testés en priorité.
 
-**`level.ts`** — calcul du niveau effectif.
+**`levels.ts`** — calcul du niveau effectif.
 
 ```
 niveaux : A2 < B1 < B2 < C1 < C2
@@ -161,23 +163,25 @@ awaiting_correction ──(retour du réseau)──> corrected
 ```
 
 Trois dépôts : `SettingsRepository`, `SeriesRepository`, `StatsRepository`.
-Chacun derrière une interface ; l'implémentation SQLite est partagée entre
-`expo-sqlite` (appareil) et `better-sqlite3` (tests Node) via une fine couche
-d'adaptation qui n'expose que `execute`, `query` et `transaction`.
+Ce sont des classes concrètes ; c'est la base qui est derrière une interface
+(`Db`), et son implémentation est partagée entre
+`expo-sqlite` (appareil) et `node:sqlite` (tests Node) via une fine couche
+d'adaptation qui n'expose que `exec`, `all`, `run` et `transaction`.
 
 ### 5.3 `ai/` — bordure Claude
 
 Deux fonctions, chacune un appel, chacune une sortie structurée Zod.
 
-**`generateSeries(level, weakTags, recentSources)`**
+**`generateSeries({ level, weakTags, recentSources })`**
 
 Le prompt système est stable et marqué `cache_control: { type: 'ephemeral' }` :
 rôle, règles de rédaction, définition des niveaux, liste fermée des étiquettes.
 Le message utilisateur porte le volatile : niveau effectif, trois étiquettes
-faibles, phrases des sept derniers jours (pour éviter les redites).
+faibles, phrases des sept dernières séries **effectivement jouées** (pour éviter
+les redites ; une série préchargée jamais ouverte n'y figure pas).
 
 ```ts
-const SeriesSchema = z.object({
+const GeneratedSeriesSchema = z.object({
   sentences: z.array(z.object({
     source_fr:    z.string(),
     reference_en: z.string(),
@@ -189,7 +193,7 @@ const SeriesSchema = z.object({
 Deux des cinq phrases ciblent les faiblesses relevées ; les trois autres
 balaient large pour ne pas enfermer la révision.
 
-**`correctSeries(items)`** — un seul appel pour les cinq phrases.
+**`correctSeries({ level, items })`** — un seul appel pour les cinq phrases.
 
 ```ts
 const CorrectionSchema = z.object({
@@ -213,9 +217,9 @@ Les erreurs sont converties en un type fermé avant de remonter :
 | Origine | Type rendu | Traitement dans l'interface |
 |---|---|---|
 | `AuthenticationError` | `invalid_key` | message + lien vers les réglages |
-| `RateLimitError` | `rate_limited` | trois tentatives, recul exponentiel |
+| `RateLimitError` | `rate_limited` | message, l'utilisateur relance |
 | `APIConnectionError` | `offline` | bascule sur le chemin hors-ligne |
-| `parsed_output` nul | `bad_response` | une nouvelle tentative, puis échec explicite |
+| sortie hors schéma | `bad_response` | une nouvelle tentative, puis échec explicite |
 | autre `APIError` | `api_error` | message avec le code d'état |
 
 ### 5.4 `usecases/` — orchestration
@@ -243,21 +247,25 @@ mobile pour valoir sa complexité.
 ## 6. Écrans
 
 **Démarrage** — trois étapes : clé API, niveau de base (A2 → C1), heure du
-rappel. La clé est validée par un appel minimal avant d'être enregistrée.
+rappel. La clé est éprouvée par une génération réelle avant d'être enregistrée :
+c'est un appel complet, pas un appel minimal, mais c'est le seul qui prouve que
+la clé fonctionne pour l'usage qu'on en fera.
 
 **Aujourd'hui** — l'écran principal. Les cinq phrases françaises en pile, une
-carte par phrase avec sa zone de saisie ; progression « 3 / 5 » en tête ;
+carte par phrase, numérotée « 3 / 5 », avec sa zone de saisie ;
 bouton « Corriger » actif quand les cinq champs sont remplis. Les réponses sont
 sauvegardées à chaque frappe (avec temporisation) pour survivre à une
 fermeture.
 
 **Correction** — une carte par phrase : note /10 en pastille, la phrase source,
 le diff coloré (suppressions barrées en rouge sourd, ajouts soulignés en vert),
-la correction propre, puis l'explication. En pied de page, la note moyenne du
-jour et la série de jours consécutifs.
+la correction propre, puis l'explication. En tête, une carte porte la note
+moyenne du jour, la série de jours consécutifs et le commentaire d'ensemble du
+modèle.
 
 **Historique** — grille des jours façon calendrier, teinte selon la note ;
-au-dessous, la note moyenne mobile et les trois erreurs les plus fréquentes.
+au-dessus, la moyenne générale ; au-dessous, les trois erreurs les plus
+fréquentes sur les trente dernières séries.
 Toucher un jour ouvre sa correction.
 
 **Réglages** — clé API, niveau de base, heure du rappel, thème
@@ -286,7 +294,8 @@ lecture est l'activité centrale, la teinte doit rester reposante.
 
 **Typographie.** Une serif (Fraunces, via `expo-google-fonts`) pour les phrases
 françaises et anglaises — c'est le texte qu'on lit et relit. La police système
-pour l'interface. Les corrections en `ui-monospace` pour aligner le diff.
+pour l'interface. Le diff reprend la police d'interface : la police à chasse fixe avait été
+envisagée puis abandonnée, elle jurait avec la serif des phrases.
 
 ## 8. Tests
 
@@ -294,13 +303,13 @@ L'ordre suit la structure : la logique pure d'abord, l'interface en dernier.
 
 | Cible | Approche |
 |---|---|
-| `core/level.ts` | tables de cas : trop peu de données, montée, descente, bornes |
+| `core/levels.ts` | tables de cas : trop peu de données, montée, descente, bornes |
 | `core/diff.ts` | insertion, suppression, remplacement, réordonnancement, égalité |
 | `core/errorTags.ts` | classement, égalités, fenêtre de trois séries |
 | `core/streak.ts` | horloge injectée : jours consécutifs, rupture, jour même |
-| `data/*` | `better-sqlite3` en mémoire : migrations, transitions d'état, cascades |
+| `data/*` | `node:sqlite` en mémoire : migrations, transitions d'état, cascades |
 | `ai/*` | SDK simulé : assemblage du prompt, correspondance des schémas, table des erreurs |
-| `usecases/*` | dépôts et client simulés : les quatre cas d'usage, chemins hors-ligne |
+| `usecases/*` | vrais dépôts sur base en mémoire, client simulé : les cas d'usage, chemins hors-ligne |
 | `ui/*` | `@testing-library/react-native` : saisie, activation du bouton, rendu du diff |
 
 Aucun test ne touche l'API réelle. Un script séparé, lancé à la main, fait un
@@ -308,7 +317,8 @@ appel de bout en bout pour vérifier que les prompts tiennent la route.
 
 ## 9. Découpage de la mise en œuvre
 
-1. **Fondations** — squelette Expo, TypeScript, lint, tests qui passent à vide.
+1. **Fondations** — squelette Expo, TypeScript, tests qui passent à vide.
+   (Le lint a été ajouté après coup, lors de l'audit.)
 2. **Noyau** — les quatre modules purs, en test d'abord.
 3. **Persistance** — schéma, migrations, dépôts.
 4. **Bordure IA** — client, prompts, schémas, table des erreurs.

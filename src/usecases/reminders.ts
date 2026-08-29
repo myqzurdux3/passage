@@ -1,15 +1,12 @@
 /**
- * `expo-notifications` lève dès l'import sous Expo Go depuis le SDK 53 : le
- * module est donc chargé à la demande, et un échec n'est jamais fatal. Un
- * rappel qui ne se planifie pas ne doit pas empêcher de traduire ses phrases.
+ * Sous Expo Go, `expo-notifications` n'a plus de module natif depuis le SDK 53 :
+ * le charger lève, puis rejette en boucle. D'où le chargement à la demande et
+ * la garde ci-dessous — un rappel qui ne se planifie pas ne doit jamais
+ * empêcher de traduire ses phrases.
  */
 
 type NotificationsModule = typeof import('expo-notifications');
 
-/**
- * Sous Expo Go, `expo-notifications` n'a plus de module natif depuis le SDK 53 :
- * le charger lève, puis rejette en boucle. On ne l'approche pas.
- */
 function notificationsAvailable(): boolean {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

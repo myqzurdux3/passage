@@ -5,10 +5,7 @@ const tokenize = (s: string): string[] => s.match(/[\p{L}\p{N}']+|[^\s\p{L}\p{N}
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
-/**
- * Diff mot à mot entre la réponse de l'apprenant et la correction.
- * Calculé localement plutôt que demandé au modèle : déterministe et gratuit.
- */
+/** Diff mot à mot entre la réponse de l'apprenant et la correction. */
 export function wordDiff(from: string, to: string): DiffOp[] {
   const a = tokenize(from);
   const b = tokenize(to);
