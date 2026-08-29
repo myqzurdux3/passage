@@ -27,6 +27,7 @@ export type StoredSeries = {
   status: SeriesStatus;
   created_at: string;
   corrected_at: string | null;
+  overall: string | null;
   sentences: StoredSentence[];
 };
 
@@ -52,6 +53,7 @@ type SeriesRow = {
   status: SeriesStatus;
   created_at: string;
   corrected_at: string | null;
+  overall: string | null;
 };
 
 type SentenceRow = {
@@ -131,7 +133,28 @@ export class SeriesRepository {
     this.db.run('UPDATE series SET status = ? WHERE id = ?', [status, seriesId]);
   }
 
-  saveCorrections(seriesId: number, items: CorrectionItem[]): void {
+  /**
+   * Refuse d'enregistrer une correction partielle : marquer une série
+   * `corrected` alors qu'une phrase n'a pas de note produit une moyenne
+   * silencieusement fausse et une carte vide à l'écran.
+   */
+  saveCorrections(seriesId: number, items: CorrectionItem[], overall = ''): void {
+    const expected = this.db.all<{ position: number }>(
+      'SELECT position FROM sentence WHERE series_id = ? ORDER BY position ASC',
+      [seriesId],
+    );
+    const got = new Set(items.map((i) => i.position));
+
+    if (got.size !== items.length) {
+      throw new Error('Corrections en double pour une même position.');
+    }
+    const missing = expected.filter((s) => !got.has(s.position));
+    if (missing.length > 0) {
+      throw new Error(
+        `Correction incomplète : positions manquantes ${missing.map((s) => s.position).join(', ')}.`,
+      );
+    }
+
     this.db.transaction(() => {
       for (const item of items) {
         this.db.run(
@@ -150,9 +173,10 @@ export class SeriesRepository {
           ],
         );
       }
-      this.db.run('UPDATE series SET status = ?, corrected_at = ? WHERE id = ?', [
+      this.db.run('UPDATE series SET status = ?, corrected_at = ?, overall = ? WHERE id = ?', [
         'corrected',
         this.now().toISOString(),
+        overall,
         seriesId,
       ]);
     });
@@ -202,6 +226,7 @@ export class SeriesRepository {
       status: row.status,
       created_at: row.created_at,
       corrected_at: row.corrected_at,
+      overall: row.overall,
       sentences: sentences.map((s) => ({
         id: s.id,
         position: s.position,

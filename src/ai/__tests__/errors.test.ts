@@ -24,6 +24,11 @@ describe('toAppError', () => {
     expect(err.status).toBe(500);
   });
 
+  it('traduit une sortie hors contrat en bad_response', () => {
+    const err = toAppError(new Anthropic.AnthropicError('Failed to parse structured output'));
+    expect(err.kind).toBe('bad_response');
+  });
+
   it('laisse passer une AppError déjà construite', () => {
     const original = new AppError('bad_response');
     expect(toAppError(original)).toBe(original);

@@ -37,20 +37,29 @@ export interface AiClient {
 }
 
 /**
- * Une réponse illisible vaut une seconde chance ; une erreur du SDK n'en vaut
- * aucune — elle est convertie et remonte telle quelle.
+ * Une réponse hors contrat vaut une seconde chance ; toute autre erreur du SDK
+ * n'en vaut aucune — elle est convertie et remonte telle quelle.
+ *
+ * Le SDK *lève* quand la validation Zod échoue (il ne rend pas un
+ * `parsed_output` nul), d'où la reprise sur `bad_response` et non sur une
+ * valeur de retour.
  */
 async function parseWithRetry<T>(run: () => Promise<{ parsed_output: T | null }>): Promise<T> {
+  let last: AppError = new AppError('bad_response');
+
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    let response: { parsed_output: T | null };
     try {
-      response = await run();
+      const response = await run();
+      if (response.parsed_output) return response.parsed_output;
+      last = new AppError('bad_response');
     } catch (e) {
-      throw toAppError(e);
+      const error = toAppError(e);
+      if (error.kind !== 'bad_response') throw error;
+      last = error;
     }
-    if (response.parsed_output) return response.parsed_output;
   }
-  throw new AppError('bad_response');
+
+  throw last;
 }
 
 export function makeAiClient(apiKey: string): AiClient {

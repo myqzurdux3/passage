@@ -1,8 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { scoreBand } from '../../core/scores';
 import { useThemeContext } from '../ThemeProvider';
-
-const GOOD = 8;
-const FAIR = 5;
 
 export function ScoreBadge({ score }: { score: number | null }) {
   const theme = useThemeContext();
@@ -38,9 +36,14 @@ function tint(
     errorSoft: string;
   },
 ) {
-  if (score >= GOOD) return { background: colors.successSoft, foreground: colors.success };
-  if (score >= FAIR) return { background: colors.accentSoft, foreground: colors.accent };
-  return { background: colors.errorSoft, foreground: colors.error };
+  switch (scoreBand(score)) {
+    case 'good':
+      return { background: colors.successSoft, foreground: colors.success };
+    case 'fair':
+      return { background: colors.accentSoft, foreground: colors.accent };
+    default:
+      return { background: colors.errorSoft, foreground: colors.error };
+  }
 }
 
 const styles = StyleSheet.create({

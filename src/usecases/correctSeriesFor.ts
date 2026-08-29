@@ -18,7 +18,7 @@ export async function correctSeriesFor(deps: Deps, series: StoredSeries): Promis
         user_en: s.user_en ?? '',
       })),
     });
-    deps.series.saveCorrections(series.id, correction.items);
+    deps.series.saveCorrections(series.id, correction.items, correction.overall);
   } catch (e) {
     deps.series.setStatus(series.id, 'awaiting_correction');
     throw toAppError(e);

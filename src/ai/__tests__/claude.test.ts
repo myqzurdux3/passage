@@ -1,7 +1,11 @@
 const mockParse = jest.fn();
 
+// Même hiérarchie que le vrai SDK : `AnthropicError` est la base, et
+// `APIError` en hérite. C'est ce qui distingue une sortie hors contrat
+// (levée par la validation Zod) d'une erreur de transport.
 jest.mock('@anthropic-ai/sdk', () => {
-  class APIError extends Error {}
+  class AnthropicError extends Error {}
+  class APIError extends AnthropicError {}
   class AuthenticationError extends APIError {}
   class RateLimitError extends APIError {}
   class APIConnectionError extends APIError {}
@@ -14,6 +18,7 @@ jest.mock('@anthropic-ai/sdk', () => {
   return {
     __esModule: true,
     default: Object.assign(FakeAnthropic, {
+      AnthropicError,
       APIError,
       AuthenticationError,
       RateLimitError,
@@ -101,24 +106,38 @@ describe('generateSeries', () => {
     expect(out[0].source_fr).toBe('Phrase 1.');
   });
 
-  it('retente une fois quand parsed_output est nul, puis lève bad_response', async () => {
-    mockParse.mockResolvedValue({ parsed_output: null });
+  // Le SDK lève quand la validation Zod échoue : c'est *cette* erreur-là que
+  // la reprise doit rattraper, pas un `parsed_output` nul qu'il ne produit
+  // jamais avec une sortie structurée.
+  it('retente une fois quand la sortie est hors contrat, puis lève bad_response', async () => {
+    mockParse.mockRejectedValue(new Anthropic.AnthropicError('Failed to parse structured output'));
+
     await expect(
       makeAiClient('sk-test').generateSeries({ level: 'B1', weakTags: [], recentSources: [] }),
     ).rejects.toMatchObject({ kind: 'bad_response' });
     expect(mockParse).toHaveBeenCalledTimes(2);
   });
 
-  it('réussit si la seconde tentative aboutit', async () => {
+  it('réussit si la seconde tentative respecte le contrat', async () => {
     mockParse
-      .mockResolvedValueOnce({ parsed_output: null })
+      .mockRejectedValueOnce(new Anthropic.AnthropicError('Failed to parse structured output'))
       .mockResolvedValueOnce({ parsed_output: { sentences: fiveSentences } });
+
     const out = await makeAiClient('sk-test').generateSeries({
       level: 'B1',
       weakTags: [],
       recentSources: [],
     });
     expect(out).toHaveLength(5);
+  });
+
+  it('ne retente pas une erreur de transport', async () => {
+    mockParse.mockRejectedValue(sdkError(Anthropic.APIConnectionError));
+
+    await expect(
+      makeAiClient('sk-test').generateSeries({ level: 'B1', weakTags: [], recentSources: [] }),
+    ).rejects.toMatchObject({ kind: 'offline' });
+    expect(mockParse).toHaveBeenCalledTimes(1);
   });
 
   it('convertit une erreur du SDK en AppError sans retenter', async () => {

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { AppError } from '../src/ai/errors';
 import { localDay } from '../src/core/date';
+import { averageScore, formatStreak } from '../src/core/scores';
 import { currentStreak } from '../src/core/streak';
 import { getTodaySeries } from '../src/usecases/getTodaySeries';
 import { submitAnswers } from '../src/usecases/submitAnswers';
@@ -190,11 +191,7 @@ function DoneToday({ series }: { series: StoredSeries }) {
   const theme = useThemeContext();
   const router = useRouter();
 
-  const scored = series.sentences.filter((s) => s.score !== null);
-  const average =
-    scored.length > 0
-      ? Math.round((scored.reduce((sum, s) => sum + (s.score ?? 0), 0) / scored.length) * 10) / 10
-      : null;
+  const average = averageScore(series.sentences.map((s) => s.score));
   const streak = currentStreak(deps.stats.correctedDays(), localDay(deps.now()));
 
   return (
@@ -206,7 +203,7 @@ function DoneToday({ series }: { series: StoredSeries }) {
           {average ?? '—'} / 10
         </Text>
         <Text style={[theme.type.body, { color: theme.colors.textMuted }]}>
-          Moyenne du jour · {streak} jour{streak > 1 ? 's' : ''} d’affilée
+          Moyenne du jour · {formatStreak(streak)}
         </Text>
       </Card>
 

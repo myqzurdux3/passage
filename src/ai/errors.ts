@@ -32,6 +32,11 @@ export class AppError extends Error {
  */
 export function toAppError(e: unknown): AppError {
   if (e instanceof AppError) return e;
+  // `AnthropicError` est la classe de base du SDK, pas une `APIError` : c'est
+  // ce que lève la validation Zod d'une sortie structurée hors contrat.
+  if (e instanceof Anthropic.AnthropicError && !(e instanceof Anthropic.APIError)) {
+    return new AppError('bad_response');
+  }
   if (e instanceof Anthropic.AuthenticationError) return new AppError('invalid_key', undefined, 401);
   if (e instanceof Anthropic.RateLimitError) return new AppError('rate_limited', undefined, 429);
   if (e instanceof Anthropic.APIConnectionError) return new AppError('offline');

@@ -223,3 +223,34 @@ describe('SeriesRepository.recentSources', () => {
     expect(repo.recentSources(2)).toEqual(['Phrase 2026-08-27', 'Phrase 2026-08-26']);
   });
 });
+
+describe('SeriesRepository.saveCorrections — garde de complétude', () => {
+  it('refuse une correction où une position manque', () => {
+    const { repo } = setup();
+    const series = repo.insert('2026-08-29', 'B1', sentences);
+    repo.saveAnswers(series.id, answers);
+
+    expect(() => repo.saveCorrections(series.id, corrections.slice(0, 4))).toThrow(
+      /positions manquantes 5/,
+    );
+    expect(repo.findByDay('2026-08-29')!.status).toBe('pending');
+  });
+
+  it('refuse une correction avec une position dupliquée', () => {
+    const { repo } = setup();
+    const series = repo.insert('2026-08-29', 'B1', sentences);
+    repo.saveAnswers(series.id, answers);
+
+    const doubled = [...corrections.slice(0, 4), { ...corrections[0] }];
+    expect(() => repo.saveCorrections(series.id, doubled)).toThrow(/double/);
+  });
+
+  it('laisse la série intacte quand la garde se déclenche', () => {
+    const { repo } = setup();
+    const series = repo.insert('2026-08-29', 'B1', sentences);
+    repo.saveAnswers(series.id, answers);
+
+    expect(() => repo.saveCorrections(series.id, corrections.slice(0, 4))).toThrow();
+    expect(repo.findByDay('2026-08-29')!.sentences[0].score).toBeNull();
+  });
+});

@@ -1,7 +1,6 @@
 import type { ErrorTag } from '../core/errorTags';
+import { round1 } from '../core/scores';
 import type { Db } from './db';
-
-const round1 = (n: number): number => Math.round(n * 10) / 10;
 
 export class StatsRepository {
   constructor(private readonly db: Db) {}

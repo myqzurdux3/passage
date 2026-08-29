@@ -1,6 +1,6 @@
 import type { Db } from './db';
 
-export const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS series (
   status       TEXT NOT NULL
                CHECK (status IN ('pending','in_progress','awaiting_correction','corrected')),
   created_at   TEXT NOT NULL,
-  corrected_at TEXT
+  corrected_at TEXT,
+  overall      TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sentence (
@@ -46,6 +47,14 @@ CREATE INDEX IF NOT EXISTS idx_series_day ON series(day);
 CREATE INDEX IF NOT EXISTS idx_sentence_series ON sentence(series_id, position);
 `;
 
+/** SQLite n'a pas d'`ADD COLUMN IF NOT EXISTS` : on interroge le schéma. */
+function addColumnIfMissing(db: Db, table: string, column: string, type: string): void {
+  const columns = db.all<{ name: string }>(`PRAGMA table_info(${table})`);
+  if (!columns.some((c) => c.name === column)) {
+    db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+}
+
 export function migrate(db: Db): void {
   db.exec(SCHEMA);
 
@@ -53,7 +62,7 @@ export function migrate(db: Db): void {
   if (!row) {
     db.run('INSERT INTO schema_version (version) VALUES (?)', [SCHEMA_VERSION]);
   } else if (row.version < SCHEMA_VERSION) {
-    // Aucune évolution à ce jour : le jour où il y en aura, elles s'enchaînent ici.
+    if (row.version < 2) addColumnIfMissing(db, 'series', 'overall', 'TEXT');
     db.run('UPDATE schema_version SET version = ?', [SCHEMA_VERSION]);
   }
 }
