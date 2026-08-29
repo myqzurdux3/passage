@@ -1,4 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
+
+/** Large de deux ordres de grandeur au-delà d'une traduction plausible. */
+export const MAX_ANSWER_LENGTH = 600;
 import { useThemeContext } from '../ThemeProvider';
 
 export function SentenceInput({
@@ -52,6 +55,9 @@ export function SentenceInput({
         onChangeText={onChange}
         editable={editable}
         multiline
+        // Une réponse démesurée ferait dépasser la fenêtre de contexte à la
+        // correction, et l'échec se répéterait à chaque reprise.
+        maxLength={MAX_ANSWER_LENGTH}
         autoCapitalize="sentences"
         autoCorrect={false}
         spellCheck={false}

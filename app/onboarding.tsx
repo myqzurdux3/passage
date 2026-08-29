@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { makeAiClient } from '../src/ai/claude';
+import { parseReminderHour } from '../src/usecases/reminders';
 import { AppError } from '../src/ai/errors';
 import { BASE_LEVELS, LEVEL_LABELS_FR, type Level } from '../src/core/levels';
 import { useApp } from '../src/ui/AppProvider';
@@ -21,6 +22,7 @@ export default function Onboarding() {
   const [level, setLevel] = useState<Level>('B1');
   const [hour, setHour] = useState('19');
   const [checking, setChecking] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   /** La clé est éprouvée avant d'être enregistrée : pas de clé morte en mémoire. */
@@ -42,13 +44,15 @@ export default function Onboarding() {
   };
 
   const finish = async () => {
-    const parsed = Number(hour);
-    updateSettings({
-      baseLevel: level,
-      reminderHour: Number.isFinite(parsed) && parsed >= 0 && parsed <= 23 ? parsed : null,
-      reminderMinute: 0,
-    });
-    await saveApiKey(key);
+    setSaving(true);
+    setError(null);
+    try {
+      updateSettings({ baseLevel: level, reminderHour: parseReminderHour(hour) });
+      await saveApiKey(key);
+    } catch {
+      setError("La clé n'a pas pu être enregistrée. Réessaie.");
+      setSaving(false);
+    }
   };
 
   return (
@@ -163,7 +167,14 @@ export default function Onboarding() {
               },
             ]}
           />
-          <Button label="Commencer" onPress={finish} />
+          {error ? (
+            <Text style={[theme.type.label, { color: theme.colors.error }]}>{error}</Text>
+          ) : null}
+          <Button
+            label={saving ? 'Enregistrement…' : 'Commencer'}
+            onPress={() => void finish()}
+            busy={saving}
+          />
         </Card>
       ) : null}
     </Screen>

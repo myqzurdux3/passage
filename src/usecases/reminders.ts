@@ -35,6 +35,22 @@ function loadNotifications(): NotificationsModule | null {
   }
 }
 
+/**
+ * Lit une heure de rappel saisie à la main. Rend `null` pour « aucun rappel ».
+ *
+ * Écrite une seule fois : quand chaque écran la revalidait à sa façon,
+ * l'amorçage acceptait une chaîne vide comme `0` et programmait un rappel à
+ * minuit là où il était censé n'en programmer aucun.
+ */
+export function parseReminderHour(text: string): number | null {
+  const trimmed = text.trim();
+  if (trimmed === '') return null;
+  if (!/^\d{1,2}$/.test(trimmed)) return null;
+
+  const hour = Number(trimmed);
+  return hour >= 0 && hour <= 23 ? hour : null;
+}
+
 /** Un seul rappel à la fois : on annule tout avant de replanifier. */
 export async function scheduleDailyReminder(hour: number, minute = 0): Promise<boolean> {
   if (!Number.isInteger(hour) || hour < 0 || hour > 23) return false;

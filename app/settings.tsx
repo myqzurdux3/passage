@@ -1,7 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { makeAiClient } from '../src/ai/claude';
+import { AppError } from '../src/ai/errors';
 import { BASE_LEVELS, LEVEL_LABELS_FR } from '../src/core/levels';
+import { parseReminderHour } from '../src/usecases/reminders';
 import { useApp } from '../src/ui/AppProvider';
 import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
@@ -21,15 +24,33 @@ export default function SettingsScreen() {
   const { settings, updateSettings, saveApiKey, eraseEverything } = useApp();
 
   const [newKey, setNewKey] = useState('');
+  const [checking, setChecking] = useState(false);
   const [hour, setHour] = useState(
     settings.reminderHour === null ? '' : String(settings.reminderHour),
   );
 
+  /** La clé est éprouvée avant d'être gardée, comme à l'amorçage : une clé
+   *  fautive enregistrée en silence ne se découvrirait que le lendemain. */
   const replaceKey = async () => {
     if (newKey.trim().length === 0) return;
-    await saveApiKey(newKey);
-    setNewKey('');
-    Alert.alert('Clé remplacée', 'La nouvelle clé est enregistrée.');
+    setChecking(true);
+    try {
+      await makeAiClient(newKey.trim()).generateSeries({
+        level: 'A2',
+        weakTags: [],
+        recentSources: [],
+      });
+      await saveApiKey(newKey);
+      setNewKey('');
+      Alert.alert('Clé remplacée', 'La nouvelle clé est vérifiée et enregistrée.');
+    } catch (e) {
+      Alert.alert(
+        'Clé refusée',
+        e instanceof AppError ? e.message : "La clé n'a pas pu être vérifiée.",
+      );
+    } finally {
+      setChecking(false);
+    }
   };
 
   const confirmErase = () => {
@@ -116,15 +137,9 @@ export default function SettingsScreen() {
           placeholder="Aucun rappel"
           placeholderTextColor={theme.colors.textMuted}
           value={hour}
-          onChangeText={setHour}
-          onEndEditing={() => {
-            const parsed = Number(hour);
-            updateSettings({
-              reminderHour:
-                hour.trim() === '' || !Number.isFinite(parsed) || parsed < 0 || parsed > 23
-                  ? null
-                  : parsed,
-            });
+          onChangeText={(text) => {
+            setHour(text);
+            updateSettings({ reminderHour: parseReminderHour(text) });
           }}
           keyboardType="number-pad"
           maxLength={2}
@@ -149,10 +164,11 @@ export default function SettingsScreen() {
           style={inputStyle(theme)}
         />
         <Button
-          label="Remplacer la clé"
+          label={checking ? 'Vérification…' : 'Vérifier et remplacer la clé'}
           variant="secondary"
-          onPress={replaceKey}
+          onPress={() => void replaceKey()}
           disabled={newKey.trim().length === 0}
+          busy={checking}
         />
       </Card>
 
