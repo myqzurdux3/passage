@@ -27,3 +27,6 @@ yarn-error.*
 .metro-health-check*
 
 .DS_Store
+
+# clé API locale, ne doit jamais être commitée
+api-key.txt
