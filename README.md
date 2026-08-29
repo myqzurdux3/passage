@@ -56,6 +56,21 @@ testable, gratuit en tokens.
 Modèle : `claude-opus-5`, pensée adaptative, effort `low` pour la génération et
 `high` pour la correction.
 
+## Sous Expo Go
+
+Deux contraintes de l'environnement Expo Go, toutes deux traitées dans le code :
+
+- `expo-notifications` n'a plus de module natif depuis le SDK 53 et lève dès
+  l'import. `src/usecases/reminders.ts` le charge à la demande et s'abstient
+  quand `Constants.executionEnvironment === 'storeClient'` : pas de rappel sous
+  Expo Go, mais rien ne casse.
+- Le SDK Anthropic importe `node:fs` et `node:path` dans sa chaîne de
+  résolution de credentials. `metro.config.js` les remplace par des modules
+  vides — ce chemin n'est jamais emprunté, le client est toujours construit
+  avec une `apiKey` explicite.
+
+Pour un rappel qui fonctionne vraiment, il faut un *development build*.
+
 ## Tests
 
 ```bash
