@@ -30,6 +30,7 @@
     "babel-preset-expo": "^57.0.9",
     "jest": "^30.5.0",
     "jest-expo": "^57.0.5",
+    "sharp": "^0.35.4",
     "test-renderer": "^1.2.0",
     "typescript": "~6.0.3"
   },
