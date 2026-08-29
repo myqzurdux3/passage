@@ -1,40 +1,31 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
-import {
-  buildTheme,
-  resolveThemeName,
-  type Theme,
-  type ThemePreference,
-} from './theme';
+import { buildTheme, resolveThemeName, type Theme, type ThemePreference } from './theme';
 
-type ThemeContextValue = Theme & {
-  preference: ThemePreference;
-  setPreference: (preference: ThemePreference) => void;
-};
+const ThemeContext = createContext<Theme | null>(null);
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
+/**
+ * Purement dérivé : la préférence est détenue par les réglages, pas ici.
+ * Un seul endroit décide, l'affichage suit.
+ */
 export function ThemeProvider({
   children,
-  initialPreference = 'system',
+  preference = 'system',
 }: {
   children: ReactNode;
-  initialPreference?: ThemePreference;
+  preference?: ThemePreference;
 }) {
-  const [preference, setPreference] = useState<ThemePreference>(initialPreference);
   const scheme = useColorScheme();
 
-  const value = useMemo<ThemeContextValue>(() => {
-    const name = resolveThemeName(preference, scheme === 'dark' ? 'dark' : 'light');
-    return { ...buildTheme(name), preference, setPreference };
-  }, [preference, scheme]);
+  const theme = useMemo(
+    () => buildTheme(resolveThemeName(preference, scheme === 'dark' ? 'dark' : 'light')),
+    [preference, scheme],
+  );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 }
 
 /** Hors provider, le thème clair sert de repli : un composant isolé reste lisible. */
-export function useThemeContext(): ThemeContextValue {
-  const value = useContext(ThemeContext);
-  if (value) return value;
-  return { ...buildTheme('light'), preference: 'system', setPreference: () => {} };
+export function useThemeContext(): Theme {
+  return useContext(ThemeContext) ?? buildTheme('light');
 }
