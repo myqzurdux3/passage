@@ -9,6 +9,7 @@ import { getTodaySeries } from '../src/usecases/getTodaySeries';
 import { submitAnswers } from '../src/usecases/submitAnswers';
 import type { StoredSeries } from '../src/data/seriesRepository';
 import { useApp, useDeps } from '../src/ui/AppProvider';
+import { useRefreshOnFocus } from '../src/ui/useRefreshOnFocus';
 import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
 import { Screen } from '../src/ui/components/Screen';
@@ -55,11 +56,7 @@ function TodayReady() {
     } finally {
       setLoading(false);
     }
-  }, [deps, router]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  }, [deps]);
 
   const flushPendingSaves = useCallback(() => {
     const timers = saveTimers.current;
@@ -76,6 +73,16 @@ function TodayReady() {
 
   // Quitter l'écran écrit ce qui restait en attente, au lieu de le jeter.
   useEffect(() => flushPendingSaves, [flushPendingSaves]);
+
+  // Le rechargement est aussi déclenché au retour au premier plan : la série
+  // affichée doit être celle du jour, pas celle d'hier soir. Le vidage préalable
+  // évite qu'une relecture écrase une frappe encore en attente.
+  useRefreshOnFocus(
+    useCallback(() => {
+      void load();
+    }, [load]),
+    { beforeLeave: flushPendingSaves },
+  );
 
   const onChange = (position: number, value: string) => {
     setDrafts((current) => ({ ...current, [position]: value }));
@@ -155,7 +162,7 @@ function TodayReady() {
         <View style={{ gap: theme.spacing.sm }}>
           {error ? <ErrorLine error={error} /> : null}
           <Button
-            label={submitting ? 'Correction en cours…' : 'Corriger'}
+            label={submitting ? 'Correction en cours…' : error ? 'Réessayer' : 'Corriger'}
             onPress={onSubmit}
             disabled={!complete}
             busy={submitting}
@@ -245,7 +252,7 @@ function ErrorLine({ error }: { error: AppError }) {
   return (
     <Text style={[theme.type.label, { color: theme.colors.error, textAlign: 'center' }]}>
       {error.kind === 'offline'
-        ? 'Pas de connexion — tes réponses sont gardées, la correction reprendra plus tard.'
+        ? 'Pas de connexion — tes réponses sont gardées. Réessaie quand le réseau revient.'
         : error.message}
     </Text>
   );

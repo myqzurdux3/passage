@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { localDay } from '../../src/core/date';
 import { wordDiff } from '../../src/core/diff';
@@ -8,6 +8,7 @@ import { currentStreak } from '../../src/core/streak';
 import { TAG_LABELS_FR } from '../../src/core/errorTags';
 import type { StoredSentence } from '../../src/data/seriesRepository';
 import { useApp, useDeps } from '../../src/ui/AppProvider';
+import { useRefreshOnFocus } from '../../src/ui/useRefreshOnFocus';
 import { Button } from '../../src/ui/components/Button';
 import { Card } from '../../src/ui/components/Card';
 import { DiffText } from '../../src/ui/components/DiffText';
@@ -27,10 +28,20 @@ function CorrectionReady() {
   const router = useRouter();
   const { day } = useLocalSearchParams<{ day: string }>();
 
-  const series = useMemo(() => (day ? deps.series.findByDay(day) : null), [deps, day]);
+  // Une reprise de correction lancée au démarrage peut aboutir pendant que cet
+  // écran est ouvert : on relit à chaque retour au premier plan.
+  const [refreshKey, setRefreshKey] = useState(0);
+  useRefreshOnFocus(useCallback(() => setRefreshKey((k) => k + 1), []));
+
+  const series = useMemo(
+    () => (day ? deps.series.findByDay(day) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deps, day, refreshKey],
+  );
   const streak = useMemo(
     () => currentStreak(deps.stats.correctedDays(), localDay(deps.now())),
-    [deps],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deps, refreshKey],
   );
 
   if (!series) {
