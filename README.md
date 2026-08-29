@@ -20,6 +20,16 @@ Claude écrit les phrases, corrige les réponses, et le niveau suit ce qu'on rat
 
 </div>
 
+<div align="center">
+
+| Aujourd'hui | Correction | Historique | Réglages |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/images/today.png" width="200"> | <img src="docs/images/correction.png" width="200"> | <img src="docs/images/history.png" width="200"> | <img src="docs/images/settings-dark.png" width="200"> |
+
+<sub>Captures réelles, sur appareil. Thème clair et sombre, ou celui du système.</sub>
+
+</div>
+
 ---
 
 ## Le rituel
@@ -51,6 +61,9 @@ reste la bonne et les réponses survivent.
 **Deux appels par jour.** Un pour écrire les cinq phrases, un pour corriger les
 cinq réponses ensemble — corriger phrase par phrase donnerait du vocabulaire
 pour les suivantes et fausserait l'évaluation.
+
+**Une fois la série faite, elle est faite.** L'écran du jour affiche la moyenne
+et propose de relire la correction ; les phrases suivantes arrivent demain.
 
 ## Comment c'est fait
 
