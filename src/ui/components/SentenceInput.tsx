@@ -4,7 +4,7 @@ import { Card } from './Card';
 import { TextField } from './TextField';
 
 /** Large de deux ordres de grandeur au-delà d'une traduction plausible. */
-export const MAX_ANSWER_LENGTH = 600;
+const MAX_ANSWER_LENGTH = 600;
 
 export function SentenceInput({
   position,

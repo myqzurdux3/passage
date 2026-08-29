@@ -45,4 +45,3 @@ export const CorrectionSchema = z.object({
   overall: z.string(),
 });
 
-export type Correction = z.infer<typeof CorrectionSchema>;

@@ -2,12 +2,12 @@
 // compare à celle-ci : sans ce garde-fou, retoucher l'un laissait l'autre
 // sur l'ancien tracé.
 
-export const ARCH_PATH = 'M16 56 L16 32 A16 16 0 0 1 48 32 L48 56';
-export const DOT = { cx: 32, cy: 42, r: 5 };
-export const STROKE_WIDTH = 6;
+const ARCH_PATH = 'M16 56 L16 32 A16 16 0 0 1 48 32 L48 56';
+const DOT = { cx: 32, cy: 42, r: 5 };
+const STROKE_WIDTH = 6;
 
 export const PAPER = '#FBF9F4';
-export const ACCENT = '#C2703D';
+const ACCENT = '#C2703D';
 
 /** `inset` laisse la marge de sécurité qu'Android rogne sur l'icône adaptative. */
 export function archSvg(inset = 0) {

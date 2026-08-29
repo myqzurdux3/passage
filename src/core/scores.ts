@@ -14,8 +14,8 @@ export function averageScore(scores: readonly (number | null)[]): number | null 
 }
 
 /** Seuils de lecture d'une note, partagés par la pastille et le calendrier. */
-export const GOOD_SCORE = 8;
-export const FAIR_SCORE = 5;
+const GOOD_SCORE = 8;
+const FAIR_SCORE = 5;
 
 export type ScoreBand = 'good' | 'fair' | 'poor';
 

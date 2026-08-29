@@ -1,5 +1,6 @@
 import { AppError } from '../../ai/errors';
-import { getTodaySeries, resolveLevel } from '../getTodaySeries';
+import { getTodaySeries } from '../getTodaySeries';
+import { resolveLevel } from '../generateSeriesFor';
 import { FIVE, makeHarness } from './fixtures';
 
 describe('getTodaySeries', () => {

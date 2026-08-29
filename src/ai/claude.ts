@@ -16,7 +16,7 @@ const MODEL = 'claude-opus-5';
 const MAX_TOKENS = 16000;
 const ATTEMPTS = 2;
 
-export type CorrectionInput = {
+type CorrectionInput = {
   position: number;
   source_fr: string;
   reference_en: string;

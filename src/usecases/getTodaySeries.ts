@@ -3,8 +3,6 @@ import type { StoredSeries } from '../data/seriesRepository';
 import type { Deps } from './deps';
 import { generateSeriesFor, resolveLevel } from './generateSeriesFor';
 
-export { DEFAULT_BASE_LEVEL, resolveLevel } from './generateSeriesFor';
-
 export async function getTodaySeries(deps: Deps): Promise<StoredSeries> {
   const day = localDay(deps.now());
 
