@@ -6,6 +6,7 @@ import {
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AppProvider, useApp } from '../src/ui/AppProvider';
@@ -47,8 +48,23 @@ function Navigation() {
   );
 }
 
+function BootFailure({ message }: { message: string }) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 12, backgroundColor: '#FBF9F4' }}>
+      <Text style={{ fontSize: 20, fontWeight: '600', color: '#1A1815' }}>
+        Passage n’a pas pu démarrer
+      </Text>
+      <Text style={{ fontSize: 15, lineHeight: 22, color: '#6B6459' }}>{message}</Text>
+      <Text style={{ fontSize: 13, lineHeight: 20, color: '#6B6459' }}>
+        Relance l’application. Si le problème persiste, réinstalle-la : les données locales sont
+        probablement illisibles.
+      </Text>
+    </View>
+  );
+}
+
 function Themed() {
-  const { ready, settings } = useApp();
+  const { ready, bootError, settings } = useApp();
   const [fontsLoaded] = useFonts({ Fraunces_400Regular, Fraunces_600SemiBold });
 
   useEffect(() => {
@@ -56,6 +72,7 @@ function Themed() {
   }, [ready, fontsLoaded]);
 
   if (!ready || !fontsLoaded) return null;
+  if (bootError) return <BootFailure message={bootError} />;
 
   return (
     <ThemeProvider preference={settings.theme}>

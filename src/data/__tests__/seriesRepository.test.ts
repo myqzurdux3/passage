@@ -146,20 +146,52 @@ describe('SeriesRepository.saveCorrections', () => {
   });
 });
 
-describe('SeriesRepository.findFirstByStatus', () => {
-  it('rend null si aucune série ne correspond', () => {
+describe('SeriesRepository.findAllByStatus', () => {
+  it('rend un tableau vide si aucune série ne correspond', () => {
     const { repo } = setup();
-    expect(repo.findFirstByStatus('awaiting_correction')).toBeNull();
+    expect(repo.findAllByStatus('awaiting_correction')).toEqual([]);
   });
 
-  it('rend la plus ancienne série au statut demandé', () => {
+  it('rend les séries du plus ancien au plus récent', () => {
     const { repo } = setup();
     const older = repo.insert('2026-08-27', 'B1', sentences);
     const newer = repo.insert('2026-08-28', 'B1', sentences);
     repo.setStatus(newer.id, 'awaiting_correction');
     repo.setStatus(older.id, 'awaiting_correction');
 
-    expect(repo.findFirstByStatus('awaiting_correction')!.day).toBe('2026-08-27');
+    expect(repo.findAllByStatus('awaiting_correction').map((s) => s.day)).toEqual([
+      '2026-08-27',
+      '2026-08-28',
+    ]);
+  });
+
+  it('accepte plusieurs statuts à la fois', () => {
+    const { repo } = setup();
+    const a = repo.insert('2026-08-27', 'B1', sentences);
+    const b = repo.insert('2026-08-28', 'B1', sentences);
+    repo.setStatus(a.id, 'awaiting_correction');
+    repo.setStatus(b.id, 'in_progress');
+
+    expect(repo.findAllByStatus('awaiting_correction', 'in_progress')).toHaveLength(2);
+  });
+
+  it('ignore les autres statuts', () => {
+    const { repo } = setup();
+    repo.insert('2026-08-27', 'B1', sentences);
+    expect(repo.findAllByStatus('awaiting_correction', 'in_progress')).toEqual([]);
+  });
+});
+
+describe('SeriesRepository.findById', () => {
+  it('relit une série par son identifiant', () => {
+    const { repo } = setup();
+    const created = repo.insert('2026-08-29', 'B2', sentences);
+    expect(repo.findById(created.id)!.day).toBe('2026-08-29');
+  });
+
+  it('rend null pour un identifiant inconnu', () => {
+    const { repo } = setup();
+    expect(repo.findById(4242)).toBeNull();
   });
 });
 

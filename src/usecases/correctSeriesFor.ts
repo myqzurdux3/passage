@@ -24,7 +24,7 @@ export async function correctSeriesFor(deps: Deps, series: StoredSeries): Promis
     throw toAppError(e);
   }
 
-  const corrected = deps.series.findByDay(series.day);
-  if (!corrected) throw new Error(`Série introuvable après correction : ${series.day}`);
+  const corrected = deps.series.findById(series.id);
+  if (!corrected) throw new Error(`Série introuvable après correction : ${series.id}`);
   return corrected;
 }

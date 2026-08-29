@@ -73,17 +73,22 @@ export class SeriesRepository {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
+  findById(id: number): StoredSeries | null {
+    const [row] = this.db.all<SeriesRow>('SELECT * FROM series WHERE id = ?', [id]);
+    return row ? this.hydrate(row) : null;
+  }
+
   findByDay(day: string): StoredSeries | null {
     const [row] = this.db.all<SeriesRow>('SELECT * FROM series WHERE day = ?', [day]);
     return row ? this.hydrate(row) : null;
   }
 
-  findFirstByStatus(status: SeriesStatus): StoredSeries | null {
-    const [row] = this.db.all<SeriesRow>(
-      'SELECT * FROM series WHERE status = ? ORDER BY day ASC LIMIT 1',
-      [status],
-    );
-    return row ? this.hydrate(row) : null;
+  /** Toutes les séries d'un statut, de la plus ancienne à la plus récente. */
+  findAllByStatus(...statuses: SeriesStatus[]): StoredSeries[] {
+    const holes = statuses.map(() => '?').join(', ');
+    return this.db
+      .all<SeriesRow>(`SELECT * FROM series WHERE status IN (${holes}) ORDER BY day ASC`, statuses)
+      .map((row) => this.hydrate(row));
   }
 
   insert(day: string, level: Level, sentences: NewSentence[]): StoredSeries {
@@ -170,6 +175,12 @@ export class SeriesRepository {
   private findByDayOrThrow(day: string): StoredSeries {
     const found = this.findByDay(day);
     if (!found) throw new Error(`Série introuvable pour le jour ${day}`);
+    return found;
+  }
+
+  private findByIdOrThrow(id: number): StoredSeries {
+    const found = this.findById(id);
+    if (!found) throw new Error(`Série introuvable : ${id}`);
     return found;
   }
 

@@ -40,10 +40,10 @@ const DEFAULT_SETTINGS: Settings = {
 
 type AppContextValue = {
   ready: boolean;
+  bootError: string | null;
   deps: Deps | null;
   settings: Settings;
   saveApiKey: (key: string) => Promise<void>;
-  forgetApiKey: () => Promise<void>;
   updateSettings: (patch: Partial<Settings>) => void;
   eraseEverything: () => Promise<void>;
 };
@@ -65,6 +65,7 @@ function readSettings(): Settings {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
   const [deps, setDeps] = useState<Deps | null>(null);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
 
@@ -72,12 +73,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      const key = await readApiKey();
-      if (cancelled) return;
+      // Sans ce filet, une base illisible ou un coffre-fort verrouillé laissait
+      // `ready` à false pour toujours : écran de démarrage figé, sans recours.
+      try {
+        const key = await readApiKey();
+        if (cancelled) return;
 
-      setSettings(readSettings());
-      if (key) setDeps(makeDepsWithKey(key));
-      setReady(true);
+        setSettings(readSettings());
+        if (key) setDeps(makeDepsWithKey(key));
+      } catch (e) {
+        if (cancelled) return;
+        setBootError(e instanceof Error ? e.message : 'Erreur inconnue au démarrage.');
+      } finally {
+        if (!cancelled) setReady(true);
+      }
     })();
 
     return () => {
@@ -94,11 +103,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveApiKey = useCallback(async (key: string) => {
     await writeApiKey(key);
     setDeps(makeDepsWithKey(key.trim()));
-  }, []);
-
-  const forgetApiKey = useCallback(async () => {
-    await clearApiKey();
-    setDeps(null);
   }, []);
 
   // Le rappel suit le réglage : replanifié à l'enregistrement et au lancement.
@@ -129,8 +133,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AppContextValue>(
-    () => ({ ready, deps, settings, saveApiKey, forgetApiKey, updateSettings, eraseEverything }),
-    [ready, deps, settings, saveApiKey, forgetApiKey, updateSettings, eraseEverything],
+    () => ({ ready, bootError, deps, settings, saveApiKey, updateSettings, eraseEverything }),
+    [ready, bootError, deps, settings, saveApiKey, updateSettings, eraseEverything],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

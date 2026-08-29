@@ -73,6 +73,21 @@ describe('submitAnswers', () => {
     });
   });
 
+  it('corrige bien la série soumise même si minuit passe entre-temps', async () => {
+    const { deps, setNow, correctSeries } = makeHarness(new Date(2026, 7, 29, 23, 50));
+    const today = deps.series.insert('2026-08-29', 'B1', FIVE);
+    // La série de demain a déjà été préchargée : c'est elle que le bug attrapait.
+    deps.series.insert('2026-08-30', 'B1', FIVE);
+
+    setNow(new Date(2026, 7, 30, 0, 1));
+    const corrected = await submitAnswers(deps, today.id, ANSWERS);
+
+    expect(corrected.day).toBe('2026-08-29');
+    expect(corrected.status).toBe('corrected');
+    expect(deps.series.findByDay('2026-08-30')!.status).toBe('pending');
+    expect(correctSeries.mock.calls[0][0].items[0].user_en).toBe('answer 1');
+  });
+
   it('déclenche la génération du lendemain après un succès', async () => {
     const { deps, generateSeries } = makeHarness();
     const series = deps.series.insert('2026-08-29', 'B1', FIVE);

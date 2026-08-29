@@ -28,12 +28,17 @@ function TodayReady() {
   const router = useRouter();
 
   const [series, setSeries] = useState<StoredSeries | null>(null);
+  const seriesRef = useRef<StoredSeries | null>(null);
+  seriesRef.current = series;
   const [drafts, setDrafts] = useState<Record<number, string>>({});
   const [error, setError] = useState<AppError | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Un minuteur par champ : un seul minuteur partagé annulait la sauvegarde
+  // du champ précédent dès qu'on passait au suivant.
+  const saveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  const pendingSaves = useRef(new Map<number, string>());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,22 +60,39 @@ function TodayReady() {
     void load();
   }, [load]);
 
-  // La saisie survit à une fermeture : elle est écrite en base après une pause.
-  useEffect(
-    () => () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    },
-    [],
-  );
+  const flushPendingSaves = useCallback(() => {
+    const timers = saveTimers.current;
+    const pending = pendingSaves.current;
+    if (pending.size === 0) return;
+
+    for (const timer of timers.values()) clearTimeout(timer);
+    timers.clear();
+
+    const answers = [...pending.entries()].map(([position, user_en]) => ({ position, user_en }));
+    pending.clear();
+    if (seriesRef.current) deps.series.saveAnswers(seriesRef.current.id, answers);
+  }, [deps]);
+
+  // Quitter l'écran écrit ce qui restait en attente, au lieu de le jeter.
+  useEffect(() => flushPendingSaves, [flushPendingSaves]);
 
   const onChange = (position: number, value: string) => {
     setDrafts((current) => ({ ...current, [position]: value }));
     if (!series) return;
 
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      deps.series.saveAnswers(series.id, [{ position, user_en: value }]);
-    }, SAVE_DELAY_MS);
+    pendingSaves.current.set(position, value);
+
+    const existing = saveTimers.current.get(position);
+    if (existing) clearTimeout(existing);
+
+    saveTimers.current.set(
+      position,
+      setTimeout(() => {
+        saveTimers.current.delete(position);
+        pendingSaves.current.delete(position);
+        deps.series.saveAnswers(series.id, [{ position, user_en: value }]);
+      }, SAVE_DELAY_MS),
+    );
   };
 
   const complete =

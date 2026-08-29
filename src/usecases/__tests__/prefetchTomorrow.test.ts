@@ -63,7 +63,59 @@ describe('retryPendingCorrection', () => {
     expect(deps.series.findByDay('2026-08-28')!.status).toBe('awaiting_correction');
   });
 
-  it('reprend la plus ancienne série en attente', async () => {
+  it('reprend aussi une série restée en cours après un arrêt brutal', async () => {
+    const { deps } = makeHarness();
+    const series = deps.series.insert('2026-08-28', 'B1', FIVE);
+    deps.series.saveAnswers(series.id, ANSWERS);
+    deps.series.setStatus(series.id, 'in_progress');
+
+    const corrected = await retryPendingCorrection(deps);
+
+    expect(corrected).not.toBeNull();
+    expect(corrected!.status).toBe('corrected');
+  });
+
+  it("ne reprend pas une série en cours dont l'utilisateur n'a rien saisi", async () => {
+    const { deps, correctSeries } = makeHarness();
+    const series = deps.series.insert('2026-08-28', 'B1', FIVE);
+    deps.series.setStatus(series.id, 'in_progress');
+
+    await expect(retryPendingCorrection(deps)).resolves.toBeNull();
+    expect(correctSeries).not.toHaveBeenCalled();
+  });
+
+  it('traite toutes les séries en attente, pas seulement la plus ancienne', async () => {
+    const { deps } = makeHarness();
+    for (const day of ['2026-08-26', '2026-08-27']) {
+      const s = deps.series.insert(day, 'B1', FIVE);
+      deps.series.saveAnswers(s.id, ANSWERS);
+      deps.series.setStatus(s.id, 'awaiting_correction');
+    }
+
+    await retryPendingCorrection(deps);
+
+    expect(deps.series.findByDay('2026-08-26')!.status).toBe('corrected');
+    expect(deps.series.findByDay('2026-08-27')!.status).toBe('corrected');
+  });
+
+  it("n'abandonne pas les suivantes quand une série échoue en boucle", async () => {
+    const { deps, correctSeries } = makeHarness();
+    const stuck = deps.series.insert('2026-08-26', 'B1', FIVE);
+    deps.series.saveAnswers(stuck.id, ANSWERS);
+    deps.series.setStatus(stuck.id, 'awaiting_correction');
+    const ok = deps.series.insert('2026-08-27', 'B1', FIVE);
+    deps.series.saveAnswers(ok.id, ANSWERS);
+    deps.series.setStatus(ok.id, 'awaiting_correction');
+
+    correctSeries.mockRejectedValueOnce(new AppError('bad_response'));
+
+    await retryPendingCorrection(deps);
+
+    expect(deps.series.findByDay('2026-08-26')!.status).toBe('awaiting_correction');
+    expect(deps.series.findByDay('2026-08-27')!.status).toBe('corrected');
+  });
+
+  it('rend la plus ancienne série reprise', async () => {
     const { deps } = makeHarness();
     for (const day of ['2026-08-26', '2026-08-27']) {
       const s = deps.series.insert(day, 'B1', FIVE);
