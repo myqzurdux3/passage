@@ -4,6 +4,7 @@ import { openDeviceDb, type Db } from '../data/db';
 import { migrate } from '../data/migrations';
 import { SeriesRepository } from '../data/seriesRepository';
 import { SettingsRepository } from '../data/settingsRepository';
+import { wipeAllData } from '../data/wipe';
 import { StatsRepository } from '../data/statsRepository';
 import type { Deps } from './deps';
 
@@ -49,7 +50,5 @@ export function makeDepsWithKey(apiKey: string): Deps {
 
 /** Efface toutes les données locales. La clé API est traitée à part. */
 export function wipeLocalData(): void {
-  const database = getDb();
-  database.run('DELETE FROM series');
-  database.run('DELETE FROM settings');
+  wipeAllData(getDb());
 }

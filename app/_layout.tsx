@@ -1,8 +1,4 @@
-import {
-  Fraunces_400Regular,
-  Fraunces_600SemiBold,
-  useFonts,
-} from '@expo-google-fonts/fraunces';
+import { Fraunces_600SemiBold, useFonts } from '@expo-google-fonts/fraunces';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -65,17 +61,21 @@ function BootFailure({ message }: { message: string }) {
 
 function Themed() {
   const { ready, bootError, settings } = useApp();
-  const [fontsLoaded] = useFonts({ Fraunces_400Regular, Fraunces_600SemiBold });
+  // L'échec du chargement des polices ne doit pas bloquer l'affichage : sans
+  // ce second élément, une police introuvable laissait l'écran de démarrage
+  // pour toujours. On continue avec la police système.
+  const [fontsLoaded, fontError] = useFonts({ Fraunces_600SemiBold });
+  const fontsSettled = fontsLoaded || fontError !== null;
 
   useEffect(() => {
-    if (ready && fontsLoaded) void SplashScreen.hideAsync();
-  }, [ready, fontsLoaded]);
+    if (ready && fontsSettled) void SplashScreen.hideAsync();
+  }, [ready, fontsSettled]);
 
-  if (!ready || !fontsLoaded) return null;
+  if (!ready || !fontsSettled) return null;
   if (bootError) return <BootFailure message={bootError} />;
 
   return (
-    <ThemeProvider preference={settings.theme}>
+    <ThemeProvider preference={settings.theme} serifAvailable={fontsLoaded}>
       <BootGuard />
       <Navigation />
     </ThemeProvider>

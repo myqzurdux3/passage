@@ -11,15 +11,21 @@ const ThemeContext = createContext<Theme | null>(null);
 export function ThemeProvider({
   children,
   preference = 'system',
+  serifAvailable = true,
 }: {
   children: ReactNode;
   preference?: ThemePreference;
+  serifAvailable?: boolean;
 }) {
   const scheme = useColorScheme();
 
   const theme = useMemo(
-    () => buildTheme(resolveThemeName(preference, scheme === 'dark' ? 'dark' : 'light')),
-    [preference, scheme],
+    () =>
+      buildTheme(
+        resolveThemeName(preference, scheme === 'dark' ? 'dark' : 'light'),
+        serifAvailable,
+      ),
+    [preference, scheme, serifAvailable],
   );
 
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;

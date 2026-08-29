@@ -46,7 +46,8 @@
     "typecheck": "tsc --noEmit",
     "icons": "node tools/make-icons.mjs",
     "lint": "eslint .",
-    "smoke": "jest --selectProjects node --testMatch \"**/__manual__/*.test.ts\""
+    "smoke": "jest --selectProjects node --testMatch \"**/__manual__/*.test.ts\"",
+    "test:tz": "TZ=America/Santiago jest --selectProjects node src/core"
   },
   "private": true
 }

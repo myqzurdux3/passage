@@ -52,10 +52,14 @@ const PALETTES: Record<ThemeName, Palette> = { light: LIGHT, dark: DARK };
 const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 const radius = { sm: 8, md: 12, lg: 20, pill: 999 } as const;
 
-const fonts = {
-  serif: 'Fraunces_600SemiBold',
-  body: 'Fraunces_400Regular',
-} as const;
+/**
+ * `serif` peut valoir `undefined` : si le chargement de Fraunces échoue, les
+ * textes retombent sur la police système plutôt que de bloquer l'application.
+ */
+type Fonts = { serif: string | undefined };
+
+const LOADED_FONTS: Fonts = { serif: 'Fraunces_600SemiBold' };
+const SYSTEM_FONTS: Fonts = { serif: undefined };
 
 const type = {
   title: { fontSize: 28, lineHeight: 34 },
@@ -71,12 +75,19 @@ export type Theme = {
   colors: Palette;
   spacing: typeof spacing;
   radius: typeof radius;
-  fonts: typeof fonts;
+  fonts: Fonts;
   type: typeof type;
 };
 
-export function buildTheme(name: ThemeName): Theme {
-  return { name, colors: PALETTES[name], spacing, radius, fonts, type };
+export function buildTheme(name: ThemeName, serifAvailable = true): Theme {
+  return {
+    name,
+    colors: PALETTES[name],
+    spacing,
+    radius,
+    fonts: serifAvailable ? LOADED_FONTS : SYSTEM_FONTS,
+    type,
+  };
 }
 
 export function resolveThemeName(

@@ -29,6 +29,13 @@ describe('currentStreak', () => {
     expect(currentStreak(['2026-08-29', '2026-08-28', '2026-08-29'], '2026-08-29')).toBe(2);
   });
 
+  it("franchit une bascule d'heure d'été fixée à minuit", () => {
+    expect(
+      currentStreak(['2026-09-04', '2026-09-05', '2026-09-06'], '2026-09-06'),
+    ).toBe(3);
+    expect(currentStreak(['2026-03-28', '2026-03-29'], '2026-03-29')).toBe(2);
+  });
+
   it('franchit un changement de mois', () => {
     expect(currentStreak(['2026-07-31', '2026-08-01'], '2026-08-01')).toBe(2);
   });
