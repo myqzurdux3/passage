@@ -2,14 +2,13 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { AppError } from '../src/ai/errors';
-import { localDay } from '../src/core/date';
 import { averageScore, formatStreak } from '../src/core/scores';
-import { currentStreak } from '../src/core/streak';
 import { getTodaySeries } from '../src/usecases/getTodaySeries';
 import { submitAnswers } from '../src/usecases/submitAnswers';
 import type { StoredSeries } from '../src/data/seriesRepository';
 import { useApp, useDeps } from '../src/ui/AppProvider';
 import { useRefreshOnFocus } from '../src/ui/useRefreshOnFocus';
+import { useStreak } from '../src/ui/useStreak';
 import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
 import { Screen } from '../src/ui/components/Screen';
@@ -30,12 +29,17 @@ function TodayReady() {
   const router = useRouter();
 
   const [series, setSeries] = useState<StoredSeries | null>(null);
+  // Le vidage des saisies en attente a besoin de la série courante depuis un
+  // rappel posé une seule fois ; la copie se fait dans un effet, pas au rendu.
   const seriesRef = useRef<StoredSeries | null>(null);
-  seriesRef.current = series;
   const [drafts, setDrafts] = useState<Record<number, string>>({});
   const [error, setError] = useState<AppError | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    seriesRef.current = series;
+  }, [series]);
 
   // Un minuteur par champ : un seul minuteur partagé annulait la sauvegarde
   // du champ précédent dès qu'on passait au suivant.
@@ -194,12 +198,11 @@ function TodayReady() {
 }
 
 function DoneToday({ series }: { series: StoredSeries }) {
-  const deps = useDeps();
   const theme = useThemeContext();
   const router = useRouter();
 
   const average = averageScore(series.sentences.map((s) => s.score));
-  const streak = currentStreak(deps.stats.correctedDays(), localDay(deps.now()));
+  const streak = useStreak();
 
   return (
     <Screen title="C’est fait" subtitle="Reviens demain pour cinq nouvelles phrases.">

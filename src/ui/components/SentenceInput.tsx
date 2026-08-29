@@ -1,8 +1,10 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { useThemeContext } from '../ThemeProvider';
+import { Card } from './Card';
+import { TextField } from './TextField';
 
 /** Large de deux ordres de grandeur au-delà d'une traduction plausible. */
 export const MAX_ANSWER_LENGTH = 600;
-import { useThemeContext } from '../ThemeProvider';
 
 export function SentenceInput({
   position,
@@ -22,35 +24,20 @@ export function SentenceInput({
   const theme = useThemeContext();
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-          borderRadius: theme.radius.md,
-          padding: theme.spacing.lg,
-          gap: theme.spacing.md,
-        },
-      ]}
-    >
+    <Card>
       <Text style={[styles.position, { color: theme.colors.textMuted }]}>
         {position} / {total}
       </Text>
 
       <Text
-        style={[
-          theme.type.sentence,
-          { color: theme.colors.text, fontFamily: theme.fonts.serif },
-        ]}
+        style={[theme.type.sentence, { color: theme.colors.text, fontFamily: theme.fonts.serif }]}
       >
         {sourceFr}
       </Text>
 
-      <TextInput
+      <TextField
         accessibilityLabel={`Traduction de la phrase ${position}`}
         placeholder="Ta traduction en anglais"
-        placeholderTextColor={theme.colors.textMuted}
         value={value}
         onChangeText={onChange}
         editable={editable}
@@ -61,30 +48,11 @@ export function SentenceInput({
         autoCapitalize="sentences"
         autoCorrect={false}
         spellCheck={false}
-        style={[
-          styles.input,
-          {
-            color: theme.colors.text,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radius.sm,
-            backgroundColor: theme.colors.background,
-          },
-        ]}
       />
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: StyleSheet.hairlineWidth },
   position: { fontSize: 12, fontWeight: '600', letterSpacing: 0.6 },
-  input: {
-    minHeight: 76,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    lineHeight: 22,
-    textAlignVertical: 'top',
-  },
 });

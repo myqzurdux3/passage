@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { makeAiClient } from '../src/ai/claude';
 import { parseReminderHour } from '../src/usecases/reminders';
 import { AppError } from '../src/ai/errors';
@@ -8,6 +8,8 @@ import { useApp } from '../src/ui/AppProvider';
 import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
 import { Screen } from '../src/ui/components/Screen';
+import { SelectableOption } from '../src/ui/components/SelectableOption';
+import { TextField } from '../src/ui/components/TextField';
 import { Logo } from '../src/ui/Logo';
 import { useThemeContext } from '../src/ui/ThemeProvider';
 
@@ -76,24 +78,14 @@ export default function Onboarding() {
             Elle reste dans le coffre-fort du téléphone et ne quitte jamais l’appareil, sauf pour
             appeler l’API Anthropic.
           </Text>
-          <TextInput
+          <TextField
             accessibilityLabel="Clé API Anthropic"
             placeholder="sk-ant-…"
-            placeholderTextColor={theme.colors.textMuted}
             value={key}
             onChangeText={setKey}
             autoCapitalize="none"
             autoCorrect={false}
             secureTextEntry
-            style={[
-              styles.input,
-              {
-                color: theme.colors.text,
-                borderColor: theme.colors.border,
-                borderRadius: theme.radius.sm,
-                backgroundColor: theme.colors.background,
-              },
-            ]}
           />
           {error ? (
             <Text style={[theme.type.label, { color: theme.colors.error }]}>{error}</Text>
@@ -115,29 +107,12 @@ export default function Onboarding() {
             résultats, jamais plus.
           </Text>
           {BASE_LEVELS.map((candidate) => (
-            <Pressable
+            <SelectableOption
               key={candidate}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: level === candidate }}
+              label={LEVEL_LABELS_FR[candidate]}
+              selected={level === candidate}
               onPress={() => setLevel(candidate)}
-              style={{
-                padding: theme.spacing.md,
-                borderRadius: theme.radius.sm,
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: level === candidate ? theme.colors.accent : theme.colors.border,
-                backgroundColor:
-                  level === candidate ? theme.colors.accentSoft : 'transparent',
-              }}
-            >
-              <Text
-                style={[
-                  theme.type.body,
-                  { color: level === candidate ? theme.colors.accent : theme.colors.text },
-                ]}
-              >
-                {LEVEL_LABELS_FR[candidate]}
-              </Text>
-            </Pressable>
+            />
           ))}
           <Button label="Continuer" onPress={() => setStep('reminder')} />
         </Card>
@@ -149,23 +124,13 @@ export default function Onboarding() {
           <Text style={[theme.type.body, { color: theme.colors.textMuted }]}>
             À quelle heure veux-tu qu’on te le rappelle ? Laisse vide pour aucun rappel.
           </Text>
-          <TextInput
+          <TextField
             accessibilityLabel="Heure du rappel"
             placeholder="19"
-            placeholderTextColor={theme.colors.textMuted}
             value={hour}
             onChangeText={setHour}
             keyboardType="number-pad"
             maxLength={2}
-            style={[
-              styles.input,
-              {
-                color: theme.colors.text,
-                borderColor: theme.colors.border,
-                borderRadius: theme.radius.sm,
-                backgroundColor: theme.colors.background,
-              },
-            ]}
           />
           {error ? (
             <Text style={[theme.type.label, { color: theme.colors.error }]}>{error}</Text>
@@ -181,11 +146,3 @@ export default function Onboarding() {
   );
 }
 
-const styles = StyleSheet.create({
-  input: {
-    minHeight: 48,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-    fontSize: 16,
-  },
-});

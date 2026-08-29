@@ -137,7 +137,7 @@ describe('SettingsRepository', () => {
 
 describe('StatsRepository.recentTagsBySeries — une seule requête', () => {
   it("n'émet pas une requête par jour", () => {
-    const { db, series, stats } = setup();
+    const { db, series } = setup();
     for (const day of ['2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28']) {
       correctDay(series, day, [6, 6, 6, 6, 6], [['tense'], [], [], [], []]);
     }

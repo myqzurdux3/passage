@@ -1,14 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
-import { localDay } from '../../src/core/date';
 import { wordDiff } from '../../src/core/diff';
 import { averageScore, formatStreak } from '../../src/core/scores';
-import { currentStreak } from '../../src/core/streak';
 import { TAG_LABELS_FR } from '../../src/core/errorTags';
 import type { StoredSentence } from '../../src/data/seriesRepository';
 import { useApp, useDeps } from '../../src/ui/AppProvider';
 import { useRefreshOnFocus } from '../../src/ui/useRefreshOnFocus';
+import { useStreak } from '../../src/ui/useStreak';
 import { Button } from '../../src/ui/components/Button';
 import { Card } from '../../src/ui/components/Card';
 import { DiffText } from '../../src/ui/components/DiffText';
@@ -38,11 +37,7 @@ function CorrectionReady() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [deps, day, refreshKey],
   );
-  const streak = useMemo(
-    () => currentStreak(deps.stats.correctedDays(), localDay(deps.now())),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [deps, refreshKey],
-  );
+  const streak = useStreak(refreshKey);
 
   if (!series) {
     return (

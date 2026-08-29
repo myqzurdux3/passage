@@ -1,5 +1,6 @@
-export const LEVELS = ['A2', 'B1', 'B2', 'C1', 'C2'] as const;
+const LEVELS = ['A2', 'B1', 'B2', 'C1', 'C2'] as const;
 export type Level = (typeof LEVELS)[number];
+export { LEVELS };
 
 /** Niveaux proposés à l'utilisateur comme plancher. C2 s'atteint, il ne se choisit pas. */
 export const BASE_LEVELS: readonly Level[] = ['A2', 'B1', 'B2', 'C1'];

@@ -19,9 +19,15 @@ type Options = {
  */
 export function useRefreshOnFocus(refresh: () => void, { beforeLeave }: Options = {}): void {
   const refreshRef = useRef(refresh);
-  refreshRef.current = refresh;
   const beforeLeaveRef = useRef(beforeLeave);
-  beforeLeaveRef.current = beforeLeave;
+
+  // Les rappels sont recopiés dans un effet, jamais pendant le rendu : les
+  // écouteurs ci-dessous ne sont posés qu'une fois et doivent voir la dernière
+  // version sans être réabonnés.
+  useEffect(() => {
+    refreshRef.current = refresh;
+    beforeLeaveRef.current = beforeLeave;
+  });
 
   useEffect(() => {
     const onChange = (state: AppStateStatus) => {

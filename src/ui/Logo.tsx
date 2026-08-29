@@ -5,15 +5,9 @@ import { useThemeContext } from './ThemeProvider';
  * Une arche et, dans son ouverture, un point : une porte qu'on franchit —
  * le nom rendu littéral. Symétrique, donc encore lisible en pastille de 24 px.
  */
-export function Logo({
-  size = 64,
-  color,
-}: {
-  size?: number;
-  color?: string;
-}) {
+export function Logo({ size = 64 }: { size?: number }) {
   const theme = useThemeContext();
-  const stroke = color ?? theme.colors.accent;
+  const stroke = theme.colors.accent;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityLabel="Logo de Passage">

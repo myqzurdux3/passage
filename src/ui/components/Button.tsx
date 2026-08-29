@@ -10,7 +10,7 @@ export function Button({
 }: {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'quiet';
+  variant?: 'primary' | 'secondary';
   disabled?: boolean;
   busy?: boolean;
 }) {

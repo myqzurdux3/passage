@@ -1,9 +1,7 @@
-import { useColorScheme } from 'react-native';
-
 export type ThemeName = 'light' | 'dark';
 export type ThemePreference = ThemeName | 'system';
 
-export type Palette = {
+type Palette = {
   background: string;
   surface: string;
   text: string;
@@ -49,18 +47,17 @@ const DARK: Palette = {
   border: '#2A2724',
 };
 
-export const PALETTES: Record<ThemeName, Palette> = { light: LIGHT, dark: DARK };
+const PALETTES: Record<ThemeName, Palette> = { light: LIGHT, dark: DARK };
 
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
-export const radius = { sm: 8, md: 12, lg: 20, pill: 999 } as const;
+const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
+const radius = { sm: 8, md: 12, lg: 20, pill: 999 } as const;
 
-export const fonts = {
+const fonts = {
   serif: 'Fraunces_600SemiBold',
-  serifRegular: 'Fraunces_400Regular',
-  mono: 'ui-monospace',
+  body: 'Fraunces_400Regular',
 } as const;
 
-export const type = {
+const type = {
   title: { fontSize: 28, lineHeight: 34 },
   heading: { fontSize: 20, lineHeight: 26 },
   sentence: { fontSize: 19, lineHeight: 28 },
@@ -88,10 +85,4 @@ export function resolveThemeName(
 ): ThemeName {
   if (preference === 'system') return systemScheme ?? 'light';
   return preference;
-}
-
-/** Thème courant. La préférence est fournie par le contexte applicatif. */
-export function useSystemTheme(preference: ThemePreference = 'system'): Theme {
-  const scheme = useColorScheme();
-  return buildTheme(resolveThemeName(preference, scheme === 'dark' ? 'dark' : 'light'));
 }

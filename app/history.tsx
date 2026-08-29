@@ -1,12 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { localDay } from '../src/core/date';
 import { TAG_LABELS_FR, topWeakTags } from '../src/core/errorTags';
 import { averageScore, formatStreak, scoreBand } from '../src/core/scores';
-import { currentStreak } from '../src/core/streak';
 import { useApp, useDeps } from '../src/ui/AppProvider';
 import { useRefreshOnFocus } from '../src/ui/useRefreshOnFocus';
+import { useStreak } from '../src/ui/useStreak';
 import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
 import { Screen } from '../src/ui/components/Screen';
@@ -31,11 +30,7 @@ function HistoryReady() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const scores = useMemo(() => deps.stats.dailyScores(), [deps, refreshKey]);
-  const streak = useMemo(
-    () => currentStreak(deps.stats.correctedDays(), localDay(deps.now())),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [deps, refreshKey],
-  );
+  const streak = useStreak(refreshKey);
   // Toutes les séries corrigées, pas une fenêtre glissante : cet écran est là
   // pour la tendance de fond, contrairement au ciblage de la génération.
   const weakTags = useMemo(
