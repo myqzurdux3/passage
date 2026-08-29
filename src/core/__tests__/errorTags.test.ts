@@ -1,4 +1,4 @@
-import { ERROR_TAGS, TAG_LABELS_FR, topWeakTags } from '../errorTags';
+import { ERROR_TAGS, TAG_LABELS_FR, parseErrorTags, topWeakTags } from '../errorTags';
 
 describe('ERROR_TAGS', () => {
   it("contient les dix étiquettes dans l'ordre convenu", () => {
@@ -45,10 +45,10 @@ describe('topWeakTags', () => {
     ).toEqual(['tense', 'article', 'register']);
   });
 
-  it('ne regarde que les trois dernières séries', () => {
+  it('compte toutes les séries fournies : la fenêtre est le choix de l\'appelant', () => {
     expect(
       topWeakTags([['spelling'], ['spelling'], ['spelling'], ['tense'], ['tense'], ['article']]),
-    ).toEqual(['tense', 'article']);
+    ).toEqual(['spelling', 'tense', 'article']);
   });
 
   it("départage les égalités par l'ordre canonique des étiquettes", () => {
@@ -57,5 +57,21 @@ describe('topWeakTags', () => {
 
   it('respecte une limite explicite', () => {
     expect(topWeakTags([['tense', 'article', 'idiom']], 1)).toEqual(['tense']);
+  });
+});
+
+describe('parseErrorTags', () => {
+  it('rend un tableau vide pour null ou du JSON invalide', () => {
+    expect(parseErrorTags(null)).toEqual([]);
+    expect(parseErrorTags('pas du json')).toEqual([]);
+    expect(parseErrorTags('{"a":1}')).toEqual([]);
+  });
+
+  it('relit les étiquettes connues', () => {
+    expect(parseErrorTags('["tense","article"]')).toEqual(['tense', 'article']);
+  });
+
+  it('écarte les étiquettes inconnues', () => {
+    expect(parseErrorTags('["tense","inventée"]')).toEqual(['tense']);
   });
 });

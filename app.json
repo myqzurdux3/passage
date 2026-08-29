@@ -20,14 +20,10 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.passage.app"
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
     "scheme": "passage",
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font",
       [
         "expo-splash-screen",
         {

@@ -15,13 +15,11 @@ export function Screen({
   subtitle,
   children,
   footer,
-  scroll = true,
 }: {
   title?: string;
   subtitle?: string;
   children: ReactNode;
   footer?: ReactNode;
-  scroll?: boolean;
 }) {
   const theme = useThemeContext();
   const insets = useSafeAreaInsets();
@@ -57,27 +55,15 @@ export function Screen({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.fill, { backgroundColor: theme.colors.background }]}
     >
-      {scroll ? (
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            padding: theme.spacing.xl,
-            paddingTop: insets.top + theme.spacing.lg,
-          }}
-        >
-          {body}
-        </ScrollView>
-      ) : (
-        <View
-          style={{
-            flex: 1,
-            padding: theme.spacing.xl,
-            paddingTop: insets.top + theme.spacing.lg,
-          }}
-        >
-          {body}
-        </View>
-      )}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          padding: theme.spacing.xl,
+          paddingTop: insets.top + theme.spacing.lg,
+        }}
+      >
+        {body}
+      </ScrollView>
 
       {footer ? (
         <View

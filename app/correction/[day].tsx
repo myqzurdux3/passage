@@ -1,12 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
-import { localDay } from '../../src/core/date';
 import { wordDiff } from '../../src/core/diff';
-import { currentStreak } from '../../src/core/streak';
+import { averageScore, formatStreak } from '../../src/core/scores';
 import { TAG_LABELS_FR } from '../../src/core/errorTags';
 import type { StoredSentence } from '../../src/data/seriesRepository';
 import { useApp, useDeps } from '../../src/ui/AppProvider';
+import { useRefreshOnFocus } from '../../src/ui/useRefreshOnFocus';
+import { useStreak } from '../../src/ui/useStreak';
 import { Button } from '../../src/ui/components/Button';
 import { Card } from '../../src/ui/components/Card';
 import { DiffText } from '../../src/ui/components/DiffText';
@@ -26,11 +27,17 @@ function CorrectionReady() {
   const router = useRouter();
   const { day } = useLocalSearchParams<{ day: string }>();
 
-  const series = useMemo(() => (day ? deps.series.findByDay(day) : null), [deps, day]);
-  const streak = useMemo(
-    () => currentStreak(deps.stats.correctedDays(), localDay(deps.now())),
-    [deps],
+  // Une reprise de correction lancée au démarrage peut aboutir pendant que cet
+  // écran est ouvert : on relit à chaque retour au premier plan.
+  const [refreshKey, setRefreshKey] = useState(0);
+  useRefreshOnFocus(useCallback(() => setRefreshKey((k) => k + 1), []));
+
+  const series = useMemo(
+    () => (day ? deps.series.findByDay(day) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deps, day, refreshKey],
   );
+  const streak = useStreak(refreshKey);
 
   if (!series) {
     return (
@@ -45,11 +52,7 @@ function CorrectionReady() {
     );
   }
 
-  const scored = series.sentences.filter((s) => s.score !== null);
-  const average =
-    scored.length > 0
-      ? Math.round((scored.reduce((sum, s) => sum + (s.score ?? 0), 0) / scored.length) * 10) / 10
-      : null;
+  const average = averageScore(series.sentences.map((s) => s.score));
 
   return (
     <Screen
@@ -63,9 +66,15 @@ function CorrectionReady() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
           <ScoreBadge score={average === null ? null : Math.round(average)} />
           <Text style={[theme.type.body, { color: theme.colors.text }]}>
-            Moyenne du jour {average ?? '—'} · {streak} jour{streak > 1 ? 's' : ''} d’affilée
+            Moyenne du jour {average ?? '—'} · {formatStreak(streak)}
           </Text>
         </View>
+
+        {series.overall ? (
+          <Text style={[theme.type.body, { color: theme.colors.textMuted }]}>
+            {series.overall}
+          </Text>
+        ) : null}
       </Card>
 
       {series.sentences.map((sentence) => (

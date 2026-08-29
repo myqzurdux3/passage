@@ -4,16 +4,13 @@ import { useThemeContext } from './ThemeProvider';
 /**
  * Une arche et, dans son ouverture, un point : une porte qu'on franchit —
  * le nom rendu littéral. Symétrique, donc encore lisible en pastille de 24 px.
+ *
+ * Le tracé est le même que celui de `tools/logo.mjs`, qui produit les icônes ;
+ * un test compare les deux pour qu'ils ne divergent pas.
  */
-export function Logo({
-  size = 64,
-  color,
-}: {
-  size?: number;
-  color?: string;
-}) {
+export function Logo({ size = 64 }: { size?: number }) {
   const theme = useThemeContext();
-  const stroke = color ?? theme.colors.accent;
+  const stroke = theme.colors.accent;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityLabel="Logo de Passage">

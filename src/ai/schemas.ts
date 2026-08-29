@@ -4,8 +4,9 @@ import { ERROR_TAGS } from '../core/errorTags';
 /**
  * `zodOutputFormat` rend les bornes numériques et les longueurs de tableau sous
  * forme de description plutôt que de contrainte de grammaire : le modèle peut
- * donc s'en écarter. La validation Zod au retour rattrape le cas, et
- * `parseWithRetry` relance une fois avant d'abandonner.
+ * donc s'en écarter. La validation Zod au retour rattrape le cas — elle *lève*,
+ * elle ne rend pas un résultat nul — et `parseWithRetry` relance une fois avant
+ * d'abandonner.
  */
 
 const tag = z.enum(ERROR_TAGS);
@@ -33,9 +34,14 @@ export const CorrectionSchema = z.object({
         error_tags: z.array(tag),
       }),
     )
-    .length(5),
+    .length(5)
+    // Cinq items dans les bornes ne garantissent pas cinq positions
+    // *distinctes* : sans ce contrôle, `[1,1,2,3,4]` laissait la phrase 5 sans
+    // correction dans une série pourtant marquée corrigée.
+    .refine(
+      (items) => new Set(items.map((i) => i.position)).size === items.length,
+      { message: 'Les positions doivent être distinctes.' },
+    ),
   overall: z.string(),
 });
 
-export type GeneratedSeries = z.infer<typeof GeneratedSeriesSchema>;
-export type Correction = z.infer<typeof CorrectionSchema>;

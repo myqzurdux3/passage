@@ -31,6 +31,8 @@ export type Harness = {
   db: Db;
   generateSeries: jest.Mock;
   correctSeries: jest.Mock;
+  /** Avance l'horloge du harnais, pour éprouver un passage de minuit. */
+  setNow: (date: Date) => void;
 };
 
 export function makeHarness(today = new Date(2026, 7, 29, 9, 0)): Harness {
@@ -47,12 +49,16 @@ export function makeHarness(today = new Date(2026, 7, 29, 9, 0)): Harness {
     correctSeries: correctSeries as AiClient['correctSeries'],
   };
 
-  const now = () => today;
+  let clock = today;
+  const now = () => clock;
 
   return {
     db,
     generateSeries,
     correctSeries,
+    setNow: (date: Date) => {
+      clock = date;
+    },
     deps: {
       series: new SeriesRepository(db, now),
       settings: new SettingsRepository(db),

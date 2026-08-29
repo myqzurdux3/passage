@@ -1,17 +1,18 @@
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { localDay } from '../src/core/date';
 import { TAG_LABELS_FR, topWeakTags } from '../src/core/errorTags';
-import { currentStreak } from '../src/core/streak';
+import { averageScore, formatStreak, scoreBand } from '../src/core/scores';
 import { useApp, useDeps } from '../src/ui/AppProvider';
+import { useRefreshOnFocus } from '../src/ui/useRefreshOnFocus';
+import { useStreak } from '../src/ui/useStreak';
 import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
 import { Screen } from '../src/ui/components/Screen';
 import { useThemeContext } from '../src/ui/ThemeProvider';
 
-const GOOD = 8;
-const FAIR = 5;
+/** Séries examinées par la carte « ce qui revient le plus ». */
+const HISTORY_WINDOW = 30;
 
 export default function History() {
   const { deps } = useApp();
@@ -24,24 +25,28 @@ function HistoryReady() {
   const theme = useThemeContext();
   const router = useRouter();
 
-  const scores = useMemo(() => deps.stats.dailyScores(), [deps]);
-  const streak = useMemo(
-    () => currentStreak(deps.stats.correctedDays(), localDay(deps.now())),
-    [deps],
-  );
-  const weakTags = useMemo(() => topWeakTags(deps.stats.recentTagsBySeries(10)), [deps]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  useRefreshOnFocus(useCallback(() => setRefreshKey((k) => k + 1), []));
 
-  const overall =
-    scores.length > 0
-      ? Math.round((scores.reduce((sum, s) => sum + s.average, 0) / scores.length) * 10) / 10
-      : null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const scores = useMemo(() => deps.stats.dailyScores(), [deps, refreshKey]);
+  const streak = useStreak(refreshKey);
+  // Toutes les séries corrigées, pas une fenêtre glissante : cet écran est là
+  // pour la tendance de fond, contrairement au ciblage de la génération.
+  const weakTags = useMemo(
+    () => topWeakTags(deps.stats.recentTagsBySeries(HISTORY_WINDOW)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deps, refreshKey],
+  );
+
+  const overall = averageScore(scores.map((s) => s.average));
 
   return (
     <Screen
       title="Historique"
       subtitle={
         scores.length > 0
-          ? `${scores.length} série${scores.length > 1 ? 's' : ''} · ${streak} jour${streak > 1 ? 's' : ''} d’affilée`
+          ? `${scores.length} série${scores.length > 1 ? 's' : ''} · ${formatStreak(streak)}`
           : 'Rien encore. La première série arrive.'
       }
       footer={<Button label="Retour" variant="secondary" onPress={() => router.replace('/')} />}
@@ -116,7 +121,12 @@ function tint(
   average: number,
   colors: { successSoft: string; accentSoft: string; errorSoft: string },
 ): string {
-  if (average >= GOOD) return colors.successSoft;
-  if (average >= FAIR) return colors.accentSoft;
-  return colors.errorSoft;
+  switch (scoreBand(average)) {
+    case 'good':
+      return colors.successSoft;
+    case 'fair':
+      return colors.accentSoft;
+    default:
+      return colors.errorSoft;
+  }
 }

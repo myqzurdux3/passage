@@ -11,7 +11,8 @@ expo-env.d.ts
 .kotlin/
 
 # secrets & credentials
-.env*.local
+.env
+.env.*
 *.jks
 *.p8
 *.p12

@@ -17,6 +17,18 @@ export const ERROR_TAGS = [
 
 export type ErrorTag = (typeof ERROR_TAGS)[number];
 
+/** Désérialisation défensive du JSON stocké, filtrée sur les étiquettes connues. */
+export function parseErrorTags(raw: string | null): ErrorTag[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((t): t is ErrorTag => ERROR_TAGS.includes(t as ErrorTag));
+  } catch {
+    return [];
+  }
+}
+
 export const TAG_LABELS_FR: Record<ErrorTag, string> = {
   tense: 'Temps',
   preposition: 'Préposition',
@@ -30,12 +42,21 @@ export const TAG_LABELS_FR: Record<ErrorTag, string> = {
   idiom: 'Tournure idiomatique',
 };
 
-const LOOKBACK = 3;
+/**
+ * Nombre de séries examinées pour cibler les faiblesses dans la génération.
+ * Une seule définition : quand la fenêtre vivait à la fois ici et chez
+ * l'appelant, l'écran d'historique en demandait dix et n'en analysait que trois.
+ */
+export const TAGS_LOOKBACK = 3;
 
-/** Étiquettes les plus fréquentes sur les trois dernières séries corrigées. */
+/**
+ * Étiquettes les plus fréquentes parmi les séries fournies.
+ * La fenêtre temporelle est le choix de l'appelant : tout ce qu'on lui passe
+ * est compté.
+ */
 export function topWeakTags(seriesTags: ErrorTag[][], limit = 3): ErrorTag[] {
   const counts = new Map<ErrorTag, number>();
-  for (const tags of seriesTags.slice(-LOOKBACK)) {
+  for (const tags of seriesTags) {
     for (const tag of tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
   }
 

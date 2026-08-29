@@ -1,4 +1,4 @@
-import type { ErrorTag } from '../core/errorTags';
+import { parseErrorTags, type ErrorTag } from '../core/errorTags';
 import type { Level } from '../core/levels';
 import type { Db } from './db';
 
@@ -27,6 +27,7 @@ export type StoredSeries = {
   status: SeriesStatus;
   created_at: string;
   corrected_at: string | null;
+  overall: string | null;
   sentences: StoredSentence[];
 };
 
@@ -52,6 +53,7 @@ type SeriesRow = {
   status: SeriesStatus;
   created_at: string;
   corrected_at: string | null;
+  overall: string | null;
 };
 
 type SentenceRow = {
@@ -73,17 +75,22 @@ export class SeriesRepository {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
+  findById(id: number): StoredSeries | null {
+    const [row] = this.db.all<SeriesRow>('SELECT * FROM series WHERE id = ?', [id]);
+    return row ? this.hydrate(row) : null;
+  }
+
   findByDay(day: string): StoredSeries | null {
     const [row] = this.db.all<SeriesRow>('SELECT * FROM series WHERE day = ?', [day]);
     return row ? this.hydrate(row) : null;
   }
 
-  findFirstByStatus(status: SeriesStatus): StoredSeries | null {
-    const [row] = this.db.all<SeriesRow>(
-      'SELECT * FROM series WHERE status = ? ORDER BY day ASC LIMIT 1',
-      [status],
-    );
-    return row ? this.hydrate(row) : null;
+  /** Toutes les séries d'un statut, de la plus ancienne à la plus récente. */
+  findAllByStatus(...statuses: SeriesStatus[]): StoredSeries[] {
+    const holes = statuses.map(() => '?').join(', ');
+    return this.db
+      .all<SeriesRow>(`SELECT * FROM series WHERE status IN (${holes}) ORDER BY day ASC`, statuses)
+      .map((row) => this.hydrate(row));
   }
 
   insert(day: string, level: Level, sentences: NewSentence[]): StoredSeries {
@@ -119,6 +126,11 @@ export class SeriesRepository {
     });
   }
 
+  /** Supprime une série et, par cascade, ses phrases et ses réponses. */
+  remove(seriesId: number): void {
+    this.db.run('DELETE FROM series WHERE id = ?', [seriesId]);
+  }
+
   setStatus(seriesId: number, status: SeriesStatus): void {
     if (!STATUSES.includes(status)) {
       throw new Error(`Statut de série inconnu : ${status}`);
@@ -126,7 +138,28 @@ export class SeriesRepository {
     this.db.run('UPDATE series SET status = ? WHERE id = ?', [status, seriesId]);
   }
 
-  saveCorrections(seriesId: number, items: CorrectionItem[]): void {
+  /**
+   * Refuse d'enregistrer une correction partielle : marquer une série
+   * `corrected` alors qu'une phrase n'a pas de note produit une moyenne
+   * silencieusement fausse et une carte vide à l'écran.
+   */
+  saveCorrections(seriesId: number, items: CorrectionItem[], overall = ''): void {
+    const expected = this.db.all<{ position: number }>(
+      'SELECT position FROM sentence WHERE series_id = ? ORDER BY position ASC',
+      [seriesId],
+    );
+    const got = new Set(items.map((i) => i.position));
+
+    if (got.size !== items.length) {
+      throw new Error('Corrections en double pour une même position.');
+    }
+    const missing = expected.filter((s) => !got.has(s.position));
+    if (missing.length > 0) {
+      throw new Error(
+        `Correction incomplète : positions manquantes ${missing.map((s) => s.position).join(', ')}.`,
+      );
+    }
+
     this.db.transaction(() => {
       for (const item of items) {
         this.db.run(
@@ -145,31 +178,58 @@ export class SeriesRepository {
           ],
         );
       }
-      this.db.run('UPDATE series SET status = ?, corrected_at = ? WHERE id = ?', [
+      this.db.run('UPDATE series SET status = ?, corrected_at = ?, overall = ? WHERE id = ?', [
         'corrected',
         this.now().toISOString(),
+        overall,
         seriesId,
       ]);
     });
   }
 
-  /** Phrases françaises des `days` dernières séries, la plus récente en tête. */
+  /**
+   * Phrases françaises réellement montrées lors des `days` dernières séries,
+   * la plus récente en tête. Les séries encore `pending` en sont exclues :
+   * elles n'ont jamais été vues, et les rappeler au modèle gaspillait des
+   * exclusions sur des phrases inconnues de l'utilisateur.
+   */
   recentSources(days: number): string[] {
     return this.db
       .all<{ source_fr: string }>(
         `SELECT s.source_fr
            FROM sentence s
            JOIN series r ON r.id = s.series_id
-          WHERE r.day IN (SELECT day FROM series ORDER BY day DESC LIMIT ?)
+          WHERE r.day IN (
+            SELECT day FROM series WHERE status != 'pending' ORDER BY day DESC LIMIT ?
+          )
           ORDER BY r.day DESC, s.position ASC`,
         [days],
       )
       .map((r) => r.source_fr);
   }
 
+  /**
+   * Supprime les séries préchargées jamais jouées et déjà dépassées : sauter
+   * un jour laissait sinon une série `pending` en base pour toujours.
+   */
+  purgeStalePending(beforeDay: string): number {
+    const stale = this.db.all<{ id: number }>(
+      "SELECT id FROM series WHERE status = 'pending' AND day < ?",
+      [beforeDay],
+    );
+    for (const { id } of stale) this.remove(id);
+    return stale.length;
+  }
+
   private findByDayOrThrow(day: string): StoredSeries {
     const found = this.findByDay(day);
     if (!found) throw new Error(`Série introuvable pour le jour ${day}`);
+    return found;
+  }
+
+  private findByIdOrThrow(id: number): StoredSeries {
+    const found = this.findById(id);
+    if (!found) throw new Error(`Série introuvable : ${id}`);
     return found;
   }
 
@@ -191,6 +251,7 @@ export class SeriesRepository {
       status: row.status,
       created_at: row.created_at,
       corrected_at: row.corrected_at,
+      overall: row.overall,
       sentences: sentences.map((s) => ({
         id: s.id,
         position: s.position,
@@ -201,18 +262,8 @@ export class SeriesRepository {
         score: s.score,
         corrected_en: s.corrected_en,
         explanation: s.explanation,
-        error_tags: parseTags(s.error_tags),
+        error_tags: parseErrorTags(s.error_tags),
       })),
     };
-  }
-}
-
-function parseTags(raw: string | null): ErrorTag[] {
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ErrorTag[]) : [];
-  } catch {
-    return [];
   }
 }

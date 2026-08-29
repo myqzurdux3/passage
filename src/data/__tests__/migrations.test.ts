@@ -2,13 +2,15 @@ import { migrate } from '../migrations';
 import { makeTestDb } from './testDb';
 
 describe('migrate', () => {
-  it('crée les quatre tables', () => {
+  it('crée les cinq tables', () => {
     const db = makeTestDb();
     migrate(db);
     const names = db
       .all<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .map((r) => r.name);
-    expect(names).toEqual(expect.arrayContaining(['answer', 'sentence', 'series', 'settings']));
+    expect(names).toEqual(
+      expect.arrayContaining(['answer', 'schema_version', 'sentence', 'series', 'settings']),
+    );
   });
 
   it('est idempotente', () => {
@@ -70,5 +72,39 @@ describe('migrate', () => {
     migrate(db);
     const [row] = db.all<{ version: number }>('SELECT version FROM schema_version');
     expect(row.version).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('migrate — évolution du schéma', () => {
+  it('ajoute la colonne overall sur une base créée en version 1', () => {
+    const db = makeTestDb();
+    // Base « ancienne » : le schéma v1 sans la colonne.
+    db.exec(`
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      CREATE TABLE series (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        day TEXT NOT NULL UNIQUE,
+        level TEXT NOT NULL,
+        status TEXT NOT NULL
+          CHECK (status IN ('pending','in_progress','awaiting_correction','corrected')),
+        created_at TEXT NOT NULL,
+        corrected_at TEXT
+      );
+    `);
+    db.run('INSERT INTO schema_version (version) VALUES (1)');
+
+    migrate(db);
+
+    const columns = db.all<{ name: string }>('PRAGMA table_info(series)').map((c) => c.name);
+    expect(columns).toContain('overall');
+    expect(db.all<{ version: number }>('SELECT version FROM schema_version')[0].version).toBe(2);
+  });
+
+  it("n'ajoute pas deux fois la colonne", () => {
+    const db = makeTestDb();
+    migrate(db);
+    expect(() => migrate(db)).not.toThrow();
+    const columns = db.all<{ name: string }>('PRAGMA table_info(series)').map((c) => c.name);
+    expect(columns.filter((c) => c === 'overall')).toHaveLength(1);
   });
 });

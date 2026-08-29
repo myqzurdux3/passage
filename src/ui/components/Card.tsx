@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useThemeContext } from '../ThemeProvider';
 
-export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+export function Card({ children }: { children: ReactNode }) {
   const theme = useThemeContext();
 
   return (
@@ -16,7 +16,6 @@ export function Card({ children, style }: { children: ReactNode; style?: ViewSty
           padding: theme.spacing.lg,
           gap: theme.spacing.md,
         },
-        style,
       ]}
     >
       {children}

@@ -12,7 +12,7 @@ jest.mock('expo-notifications', () => ({
   SchedulableTriggerInputTypes: { DAILY: 'daily' },
 }));
 
-import { cancelDailyReminder, scheduleDailyReminder } from '../reminders';
+import { cancelDailyReminder, parseReminderHour, scheduleDailyReminder } from '../reminders';
 
 const notifications = jest.requireMock('expo-notifications') as {
   cancelAllScheduledNotificationsAsync: jest.Mock;
@@ -90,5 +90,31 @@ describe('module indisponible', () => {
   it("n'échoue pas si l'annulation lève", async () => {
     notifications.cancelAllScheduledNotificationsAsync.mockRejectedValue(new Error('boom'));
     await expect(cancelDailyReminder()).resolves.toBeUndefined();
+  });
+});
+
+describe('parseReminderHour', () => {
+  it('rend null pour une saisie vide — « aucun rappel »', () => {
+    expect(parseReminderHour('')).toBeNull();
+    expect(parseReminderHour('   ')).toBeNull();
+  });
+
+  it('lit une heure valide', () => {
+    expect(parseReminderHour('0')).toBe(0);
+    expect(parseReminderHour('9')).toBe(9);
+    expect(parseReminderHour('19')).toBe(19);
+    expect(parseReminderHour('23')).toBe(23);
+  });
+
+  it('rejette une heure hors bornes', () => {
+    expect(parseReminderHour('24')).toBeNull();
+    expect(parseReminderHour('99')).toBeNull();
+  });
+
+  it('rejette ce qui n’est pas un entier', () => {
+    expect(parseReminderHour('19.5')).toBeNull();
+    expect(parseReminderHour('-1')).toBeNull();
+    expect(parseReminderHour('abc')).toBeNull();
+    expect(parseReminderHour('1e1')).toBeNull();
   });
 });

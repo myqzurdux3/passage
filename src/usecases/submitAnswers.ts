@@ -1,5 +1,4 @@
 import { AppError } from '../ai/errors';
-import { localDay } from '../core/date';
 import type { StoredSeries } from '../data/seriesRepository';
 import { correctSeriesFor } from './correctSeriesFor';
 import type { Deps } from './deps';
@@ -14,9 +13,11 @@ export async function submitAnswers(
   deps.series.saveAnswers(seriesId, answers);
   deps.series.setStatus(seriesId, 'in_progress');
 
-  const day = localDay(deps.now());
-  const series = deps.series.findByDay(day);
-  if (!series) throw new AppError('bad_response', `Série introuvable pour le jour ${day}.`);
+  // Relecture par identifiant, jamais par date : minuit peut passer entre
+  // l'ouverture de l'écran et la validation, et c'est bien *cette* série
+  // qu'on corrige, pas celle du jour courant.
+  const series = deps.series.findById(seriesId);
+  if (!series) throw new AppError('bad_response', `Série introuvable : ${seriesId}.`);
 
   const corrected = await correctSeriesFor(deps, series);
 

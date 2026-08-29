@@ -1,34 +1,24 @@
 import { localDay } from '../core/date';
-import { topWeakTags } from '../core/errorTags';
-import { effectiveLevel, type Level } from '../core/levels';
-import { SETTING_KEYS } from '../data/settingsRepository';
 import type { StoredSeries } from '../data/seriesRepository';
 import type { Deps } from './deps';
-
-export const DEFAULT_BASE_LEVEL: Level = 'B1';
-
-/** Fenêtres de l'adaptatif, fixées par la conception. */
-const AVERAGES_WINDOW = 5;
-const TAGS_WINDOW = 3;
-const RECENT_SOURCES_DAYS = 7;
-
-export function resolveLevel(deps: Deps): Level {
-  const base = (deps.settings.get(SETTING_KEYS.baseLevel) ?? DEFAULT_BASE_LEVEL) as Level;
-  return effectiveLevel(base, deps.stats.recentAverages(AVERAGES_WINDOW));
-}
+import { generateSeriesFor, resolveLevel } from './generateSeriesFor';
 
 export async function getTodaySeries(deps: Deps): Promise<StoredSeries> {
   const day = localDay(deps.now());
 
+  // Les séries d'avant-hier restées `pending` n'ont jamais été jouées et ne le
+  // seront pas : elles ne feraient que polluer les phrases récentes.
+  deps.series.purgeStalePending(day);
+
   const existing = deps.series.findByDay(day);
-  if (existing) return existing;
+  if (existing) {
+    // Une série préchargée hier a pu être calculée sur un niveau depuis
+    // modifié dans les réglages : on la régénère plutôt que de servir des
+    // phrases qui contredisent le réglage affiché.
+    if (existing.status !== 'pending' || existing.level === resolveLevel(deps)) return existing;
 
-  const level = resolveLevel(deps);
-  const sentences = await deps.ai.generateSeries({
-    level,
-    weakTags: topWeakTags(deps.stats.recentTagsBySeries(TAGS_WINDOW)),
-    recentSources: deps.series.recentSources(RECENT_SOURCES_DAYS),
-  });
+    deps.series.remove(existing.id);
+  }
 
-  return deps.series.insert(day, level, sentences);
+  return generateSeriesFor(deps, day);
 }

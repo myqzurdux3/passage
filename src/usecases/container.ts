@@ -1,6 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
 import { makeAiClient } from '../ai/claude';
-import { AppError } from '../ai/errors';
 import { openDeviceDb, type Db } from '../data/db';
 import { migrate } from '../data/migrations';
 import { SeriesRepository } from '../data/seriesRepository';
@@ -12,7 +11,7 @@ import type { Deps } from './deps';
  * La clé API ne quitte jamais le Keychain / Keystore : ni journal, ni base,
  * ni message d'erreur.
  */
-export const API_KEY_SLOT = 'anthropic_api_key';
+const API_KEY_SLOT = 'anthropic_api_key';
 
 export async function readApiKey(): Promise<string | null> {
   return SecureStore.getItemAsync(API_KEY_SLOT);
@@ -46,12 +45,6 @@ export function makeDepsWithKey(apiKey: string): Deps {
     ai: makeAiClient(apiKey),
     now: () => new Date(),
   };
-}
-
-export async function makeDeps(): Promise<Deps> {
-  const apiKey = await readApiKey();
-  if (!apiKey) throw new AppError('invalid_key', 'Aucune clé API enregistrée.');
-  return makeDepsWithKey(apiKey);
 }
 
 /** Efface toutes les données locales. La clé API est traitée à part. */
