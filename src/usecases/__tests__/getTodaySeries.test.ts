@@ -39,11 +39,12 @@ describe('getTodaySeries', () => {
     expect(generateSeries.mock.calls[0][0].level).toBe('B1');
   });
 
-  it('transmet les phrases des sept derniers jours', async () => {
+  it('transmet les phrases des sept derniers jours effectivement jouées', async () => {
     const { deps, generateSeries } = makeHarness();
-    deps.series.insert('2026-08-28', 'B1', [
+    const played = deps.series.insert('2026-08-28', 'B1', [
       { source_fr: 'Déjà vue.', reference_en: 'Seen.', targets_tag: null },
     ]);
+    deps.series.setStatus(played.id, 'corrected');
 
     await getTodaySeries(deps);
 
@@ -106,5 +107,75 @@ describe('resolveLevel', () => {
     }
 
     expect(resolveLevel(deps)).toBe('B2');
+  });
+});
+
+describe('getTodaySeries — série préchargée périmée', () => {
+  /** Corrige une journée entière avec la note voulue. */
+  function correctDay(deps: ReturnType<typeof makeHarness>['deps'], day: string, score: number) {
+    const s = deps.series.insert(day, 'B1', FIVE);
+    deps.series.saveAnswers(
+      s.id,
+      FIVE.map((_, i) => ({ position: i + 1, user_en: 'x' })),
+    );
+    deps.series.saveCorrections(
+      s.id,
+      FIVE.map((_, i) => ({
+        position: i + 1,
+        score,
+        corrected_en: 'ok',
+        explanation: '',
+        error_tags: [],
+      })),
+    );
+  }
+
+  it('régénère une série préchargée dont le niveau ne correspond plus au réglage', async () => {
+    const { deps, generateSeries } = makeHarness();
+    deps.settings.set('base_level', 'B1');
+    deps.series.insert('2026-08-29', 'B1', FIVE);
+
+    deps.settings.set('base_level', 'C1');
+    const series = await getTodaySeries(deps);
+
+    expect(generateSeries).toHaveBeenCalledTimes(1);
+    expect(series.level).toBe('C1');
+    expect(deps.stats.correctedDays()).toEqual([]);
+  });
+
+  it('conserve une série déjà commencée même si le niveau a changé', async () => {
+    const { deps, generateSeries } = makeHarness();
+    deps.settings.set('base_level', 'B1');
+    const existing = deps.series.insert('2026-08-29', 'B1', FIVE);
+    deps.series.saveAnswers(existing.id, [{ position: 1, user_en: 'déjà tapé' }]);
+    deps.series.setStatus(existing.id, 'in_progress');
+
+    deps.settings.set('base_level', 'C1');
+    const series = await getTodaySeries(deps);
+
+    expect(generateSeries).not.toHaveBeenCalled();
+    expect(series.sentences[0].user_en).toBe('déjà tapé');
+  });
+
+  it('conserve une série préchargée dont le niveau est toujours bon', async () => {
+    const { deps, generateSeries } = makeHarness();
+    deps.settings.set('base_level', 'B1');
+    deps.series.insert('2026-08-29', 'B1', FIVE);
+
+    await getTodaySeries(deps);
+
+    expect(generateSeries).not.toHaveBeenCalled();
+  });
+
+  it("tient compte de la montée de niveau provoquée par les séries corrigées", async () => {
+    const { deps, generateSeries } = makeHarness();
+    deps.settings.set('base_level', 'B1');
+    for (const day of ['2026-08-25', '2026-08-26', '2026-08-27']) correctDay(deps, day, 10);
+    deps.series.insert('2026-08-29', 'B1', FIVE);
+
+    const series = await getTodaySeries(deps);
+
+    expect(generateSeries).toHaveBeenCalledTimes(1);
+    expect(series.level).toBe('B2');
   });
 });

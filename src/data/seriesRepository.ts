@@ -1,4 +1,4 @@
-import type { ErrorTag } from '../core/errorTags';
+import { parseErrorTags, type ErrorTag } from '../core/errorTags';
 import type { Level } from '../core/levels';
 import type { Db } from './db';
 
@@ -126,6 +126,11 @@ export class SeriesRepository {
     });
   }
 
+  /** Supprime une série et, par cascade, ses phrases et ses réponses. */
+  remove(seriesId: number): void {
+    this.db.run('DELETE FROM series WHERE id = ?', [seriesId]);
+  }
+
   setStatus(seriesId: number, status: SeriesStatus): void {
     if (!STATUSES.includes(status)) {
       throw new Error(`Statut de série inconnu : ${status}`);
@@ -182,18 +187,38 @@ export class SeriesRepository {
     });
   }
 
-  /** Phrases françaises des `days` dernières séries, la plus récente en tête. */
+  /**
+   * Phrases françaises réellement montrées lors des `days` dernières séries,
+   * la plus récente en tête. Les séries encore `pending` en sont exclues :
+   * elles n'ont jamais été vues, et les rappeler au modèle gaspillait des
+   * exclusions sur des phrases inconnues de l'utilisateur.
+   */
   recentSources(days: number): string[] {
     return this.db
       .all<{ source_fr: string }>(
         `SELECT s.source_fr
            FROM sentence s
            JOIN series r ON r.id = s.series_id
-          WHERE r.day IN (SELECT day FROM series ORDER BY day DESC LIMIT ?)
+          WHERE r.day IN (
+            SELECT day FROM series WHERE status != 'pending' ORDER BY day DESC LIMIT ?
+          )
           ORDER BY r.day DESC, s.position ASC`,
         [days],
       )
       .map((r) => r.source_fr);
+  }
+
+  /**
+   * Supprime les séries préchargées jamais jouées et déjà dépassées : sauter
+   * un jour laissait sinon une série `pending` en base pour toujours.
+   */
+  purgeStalePending(beforeDay: string): number {
+    const stale = this.db.all<{ id: number }>(
+      "SELECT id FROM series WHERE status = 'pending' AND day < ?",
+      [beforeDay],
+    );
+    for (const { id } of stale) this.remove(id);
+    return stale.length;
   }
 
   private findByDayOrThrow(day: string): StoredSeries {
@@ -237,18 +262,8 @@ export class SeriesRepository {
         score: s.score,
         corrected_en: s.corrected_en,
         explanation: s.explanation,
-        error_tags: parseTags(s.error_tags),
+        error_tags: parseErrorTags(s.error_tags),
       })),
     };
-  }
-}
-
-function parseTags(raw: string | null): ErrorTag[] {
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ErrorTag[]) : [];
-  } catch {
-    return [];
   }
 }

@@ -134,3 +134,27 @@ describe('SettingsRepository', () => {
     expect(db.all('SELECT key FROM settings')).toHaveLength(1);
   });
 });
+
+describe('StatsRepository.recentTagsBySeries — une seule requête', () => {
+  it("n'émet pas une requête par jour", () => {
+    const { db, series, stats } = setup();
+    for (const day of ['2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28']) {
+      correctDay(series, day, [6, 6, 6, 6, 6], [['tense'], [], [], [], []]);
+    }
+
+    let queries = 0;
+    const counting: Db = { ...db, all: (sql, params) => (queries++, db.all(sql, params)) };
+
+    new StatsRepository(counting).recentTagsBySeries(4);
+
+    expect(queries).toBe(1);
+  });
+
+  it('groupe correctement malgré la requête unique', () => {
+    const { series, stats } = setup();
+    correctDay(series, '2026-08-27', [6, 6, 6, 6, 6], [['tense'], ['article'], [], [], []]);
+    correctDay(series, '2026-08-28', [6, 6, 6, 6, 6], [['idiom'], [], [], [], []]);
+
+    expect(stats.recentTagsBySeries(3)).toEqual([['tense', 'article'], ['idiom']]);
+  });
+});

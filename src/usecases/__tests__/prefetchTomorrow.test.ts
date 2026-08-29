@@ -24,6 +24,32 @@ describe('prefetchTomorrow', () => {
     expect(generateSeries).not.toHaveBeenCalled();
   });
 
+  it('prépare demain avec le niveau issu de la correction du jour', async () => {
+    const { deps, generateSeries } = makeHarness();
+    deps.settings.set('base_level', 'B1');
+
+    // Trois séries excellentes, dont celle d'aujourd'hui : l'adaptatif monte.
+    for (const day of ['2026-08-27', '2026-08-28', '2026-08-29']) {
+      const s = deps.series.insert(day, 'B1', FIVE);
+      deps.series.saveAnswers(s.id, ANSWERS);
+      deps.series.saveCorrections(
+        s.id,
+        FIVE.map((_, i) => ({
+          position: i + 1,
+          score: 10,
+          corrected_en: 'ok',
+          explanation: '',
+          error_tags: [],
+        })),
+      );
+    }
+
+    await prefetchTomorrow(deps);
+
+    expect(generateSeries.mock.calls[0][0].level).toBe('B2');
+    expect(deps.series.findByDay('2026-08-30')!.level).toBe('B2');
+  });
+
   it('avale une panne réseau sans rien écrire', async () => {
     const { deps, generateSeries } = makeHarness();
     generateSeries.mockRejectedValue(new AppError('offline'));

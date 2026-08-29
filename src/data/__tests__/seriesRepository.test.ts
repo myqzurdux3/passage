@@ -203,12 +203,14 @@ describe('SeriesRepository.recentSources', () => {
 
   it('rend les phrases françaises des séries récentes, la plus récente en tête', () => {
     const { repo } = setup();
-    repo.insert('2026-08-27', 'B1', [
+    const old = repo.insert('2026-08-27', 'B1', [
       { source_fr: 'Ancienne.', reference_en: 'Old.', targets_tag: null },
     ]);
-    repo.insert('2026-08-28', 'B1', [
+    const recent = repo.insert('2026-08-28', 'B1', [
       { source_fr: 'Récente.', reference_en: 'Recent.', targets_tag: null },
     ]);
+    repo.setStatus(old.id, 'corrected');
+    repo.setStatus(recent.id, 'corrected');
 
     expect(repo.recentSources(7)).toEqual(['Récente.', 'Ancienne.']);
   });
@@ -216,9 +218,10 @@ describe('SeriesRepository.recentSources', () => {
   it('se limite au nombre de jours demandé', () => {
     const { repo } = setup();
     for (const day of ['2026-08-25', '2026-08-26', '2026-08-27']) {
-      repo.insert(day, 'B1', [
+      const s = repo.insert(day, 'B1', [
         { source_fr: `Phrase ${day}`, reference_en: 'x', targets_tag: null },
       ]);
+      repo.setStatus(s.id, 'corrected');
     }
     expect(repo.recentSources(2)).toEqual(['Phrase 2026-08-27', 'Phrase 2026-08-26']);
   });
@@ -252,5 +255,39 @@ describe('SeriesRepository.saveCorrections — garde de complétude', () => {
 
     expect(() => repo.saveCorrections(series.id, corrections.slice(0, 4))).toThrow();
     expect(repo.findByDay('2026-08-29')!.sentences[0].score).toBeNull();
+  });
+});
+
+describe('SeriesRepository — séries préchargées jamais jouées', () => {
+  it('exclut des phrases récentes une série encore pending', () => {
+    const { repo } = setup();
+    const played = repo.insert('2026-08-28', 'B1', [
+      { source_fr: 'Vue.', reference_en: 'Seen.', targets_tag: null },
+    ]);
+    repo.setStatus(played.id, 'corrected');
+    repo.insert('2026-08-30', 'B1', [
+      { source_fr: 'Jamais vue.', reference_en: 'Unseen.', targets_tag: null },
+    ]);
+
+    expect(repo.recentSources(7)).toEqual(['Vue.']);
+  });
+
+  it('purge les séries pending antérieures au jour donné', () => {
+    const { repo } = setup();
+    repo.insert('2026-08-27', 'B1', sentences);
+    repo.insert('2026-08-29', 'B1', sentences);
+
+    expect(repo.purgeStalePending('2026-08-29')).toBe(1);
+    expect(repo.findByDay('2026-08-27')).toBeNull();
+    expect(repo.findByDay('2026-08-29')).not.toBeNull();
+  });
+
+  it('ne purge jamais une série commencée ou corrigée', () => {
+    const { repo } = setup();
+    const started = repo.insert('2026-08-27', 'B1', sentences);
+    repo.setStatus(started.id, 'awaiting_correction');
+
+    expect(repo.purgeStalePending('2026-08-29')).toBe(0);
+    expect(repo.findByDay('2026-08-27')).not.toBeNull();
   });
 });

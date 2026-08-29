@@ -1,4 +1,4 @@
-import type { ErrorTag } from '../core/errorTags';
+import { parseErrorTags, type ErrorTag } from '../core/errorTags';
 import { round1 } from '../core/scores';
 import type { Db } from './db';
 
@@ -23,28 +23,31 @@ export class StatsRepository {
       .reverse();
   }
 
-  /** Étiquettes groupées par série corrigée, du plus ancien au plus récent. */
+  /**
+   * Étiquettes groupées par série corrigée, du plus ancien au plus récent.
+   * Une seule requête : la version précédente en émettait une par jour.
+   */
   recentTagsBySeries(limit: number): ErrorTag[][] {
-    const days = this.db
-      .all<{ day: string }>(
-        `SELECT day FROM series WHERE status = 'corrected' ORDER BY day DESC LIMIT ?`,
-        [limit],
-      )
-      .map((r) => r.day)
-      .reverse();
+    const rows = this.db.all<{ day: string; error_tags: string | null }>(
+      `SELECT r.day AS day, a.error_tags AS error_tags
+         FROM series r
+         JOIN sentence s ON s.series_id = r.id
+         JOIN answer a ON a.sentence_id = s.id
+        WHERE r.day IN (
+          SELECT day FROM series WHERE status = 'corrected' ORDER BY day DESC LIMIT ?
+        )
+        ORDER BY r.day ASC, s.position ASC`,
+      [limit],
+    );
 
-    return days.map((day) => {
-      const rows = this.db.all<{ error_tags: string | null }>(
-        `SELECT a.error_tags
-           FROM series r
-           JOIN sentence s ON s.series_id = r.id
-           JOIN answer a ON a.sentence_id = s.id
-          WHERE r.day = ?
-          ORDER BY s.position ASC`,
-        [day],
-      );
-      return rows.flatMap((row) => parseTags(row.error_tags));
-    });
+    const byDay = new Map<string, ErrorTag[]>();
+    for (const row of rows) {
+      const tags = byDay.get(row.day) ?? [];
+      tags.push(...parseErrorTags(row.error_tags));
+      byDay.set(row.day, tags);
+    }
+
+    return [...byDay.values()];
   }
 
   correctedDays(): string[] {
@@ -65,15 +68,5 @@ export class StatsRepository {
           ORDER BY r.day ASC`,
       )
       .map((row) => ({ day: row.day, average: round1(row.average) }));
-  }
-}
-
-function parseTags(raw: string | null): ErrorTag[] {
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ErrorTag[]) : [];
-  } catch {
-    return [];
   }
 }

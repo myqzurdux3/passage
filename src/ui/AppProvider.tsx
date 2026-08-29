@@ -16,12 +16,11 @@ import {
   wipeLocalData,
   writeApiKey,
 } from '../usecases/container';
-import { prefetchTomorrow } from '../usecases/prefetchTomorrow';
 import { cancelDailyReminder, scheduleDailyReminder } from '../usecases/reminders';
 import { retryPendingCorrection } from '../usecases/retryPendingCorrection';
 import { SETTING_KEYS, SettingsRepository } from '../data/settingsRepository';
 import type { Level } from '../core/levels';
-import { DEFAULT_BASE_LEVEL } from '../usecases/getTodaySeries';
+import { DEFAULT_BASE_LEVEL } from '../usecases/generateSeriesFor';
 import type { ThemePreference } from './theme';
 
 export type Settings = {
@@ -94,10 +93,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Reprise et anticipation, toutes deux en marge : l'affichage ne les attend pas.
+  // Reprise des corrections restées en plan, en marge : l'affichage ne l'attend
+  // pas. Le préchargement de demain, lui, n'a pas sa place ici : il vit après
+  // la correction du jour, sinon la série de demain ignore le résultat du jour.
   useEffect(() => {
     if (!deps) return;
-    void retryPendingCorrection(deps).then(() => prefetchTomorrow(deps));
+    void retryPendingCorrection(deps);
   }, [deps]);
 
   const saveApiKey = useCallback(async (key: string) => {

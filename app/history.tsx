@@ -11,6 +11,9 @@ import { Card } from '../src/ui/components/Card';
 import { Screen } from '../src/ui/components/Screen';
 import { useThemeContext } from '../src/ui/ThemeProvider';
 
+/** Séries examinées par la carte « ce qui revient le plus ». */
+const HISTORY_WINDOW = 30;
+
 export default function History() {
   const { deps } = useApp();
   if (!deps) return null;
@@ -27,7 +30,9 @@ function HistoryReady() {
     () => currentStreak(deps.stats.correctedDays(), localDay(deps.now())),
     [deps],
   );
-  const weakTags = useMemo(() => topWeakTags(deps.stats.recentTagsBySeries(10)), [deps]);
+  // Toutes les séries corrigées, pas une fenêtre glissante : cet écran est là
+  // pour la tendance de fond, contrairement au ciblage de la génération.
+  const weakTags = useMemo(() => topWeakTags(deps.stats.recentTagsBySeries(HISTORY_WINDOW)), [deps]);
 
   const overall = averageScore(scores.map((s) => s.average));
 
