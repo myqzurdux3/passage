@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "tools/*.mjs",
+    "src/**/__tests__/**/*.{ts,tsx}",
+    "src/**/__manual__/**/*.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "app/**/*.{ts,tsx}",
+    "tools/*.mjs"
+  ],
+  "ignoreDependencies": [
+    "expo-font",
+    "expo-updates"
+  ],
+  "ignoreUnresolved": [
+    "babel-jest"
+  ]
+}

@@ -15,7 +15,7 @@ Claude écrit les phrases, corrige les réponses, et le niveau suit ce qu'on rat
 ![React Native 0.86](https://img.shields.io/badge/React%20Native-0.86-61DAFB?logo=react&logoColor=000)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Claude Opus 5](https://img.shields.io/badge/Claude-Opus%205-C2703D)
-![244 tests](https://img.shields.io/badge/tests-244%20✓-4A7C59)
+![250 tests](https://img.shields.io/badge/tests-250%20✓-4A7C59)
 ![Local-first](https://img.shields.io/badge/données-100%25%20locales-6B6459)
 
 </div>
@@ -141,11 +141,12 @@ Paquet installé : `com.passage.app`.
 ## Tests
 
 ```bash
-npm test          # 244 tests, deux projets (logique + écrans)
+npm test          # 250 tests, deux projets (logique + écrans)
 npm run test:node # logique, persistance, IA, cas d'usage
 npm run test:tz   # le noyau sous un fuseau qui bascule à minuit
 npm run typecheck
 npm run lint
+npm run deadcode  # exports, fichiers et dépendances jamais atteints
 ```
 
 Aucun test de la suite n'appelle l'API. Pour éprouver les vrais prompts sur le

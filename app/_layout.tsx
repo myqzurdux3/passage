@@ -6,6 +6,7 @@ import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AppProvider, useApp } from '../src/ui/AppProvider';
+import { resolveBootRoute } from '../src/ui/bootRoute';
 import { ThemeProvider, useThemeContext } from '../src/ui/ThemeProvider';
 
 void SplashScreen.preventAutoHideAsync();
@@ -17,11 +18,12 @@ function BootGuard() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!ready) return;
-
-    const onOnboarding = segments[0] === 'onboarding';
-    if (!deps && !onOnboarding) router.replace('/onboarding');
-    else if (deps && onOnboarding) router.replace('/');
+    const target = resolveBootRoute({
+      ready,
+      hasApiKey: deps !== null,
+      onOnboarding: segments[0] === 'onboarding',
+    });
+    if (target) router.replace(target);
   }, [ready, deps, segments, router]);
 
   return null;
