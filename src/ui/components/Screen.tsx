@@ -68,6 +68,23 @@ export function Screen({
         {body}
       </ScrollView>
 
+      {/*
+        Bandeau opaque sous la barre d'état. Le contenu démarre plus bas, mais
+        rien ne l'empêchait de défiler sous une barre transparente : le texte
+        entrait en collision avec l'heure et devenait illisible. Invisible au
+        repos — c'est la couleur de fond —, il ne fait que masquer ce qui passe
+        derrière.
+      */}
+      {insets.top > 0 ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.statusBar,
+            { height: insets.top, backgroundColor: theme.colors.background },
+          ]}
+        />
+      ) : null}
+
       {footer ? (
         <View
           style={[
@@ -90,4 +107,5 @@ export function Screen({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   footer: { borderTopWidth: StyleSheet.hairlineWidth },
+  statusBar: { position: 'absolute', top: 0, left: 0, right: 0 },
 });
