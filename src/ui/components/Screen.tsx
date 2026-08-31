@@ -1,12 +1,5 @@
 import type { ReactNode } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../ThemeProvider';
 
@@ -52,7 +45,17 @@ export function Screen({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // « padding » sur toutes les plateformes, Android compris. Y passer
+      // `undefined` s'en remettait au redimensionnement de fenêtre demandé par
+      // `android:windowSoftInputMode="adjustResize"` ; depuis Android 15 le
+      // bord-à-bord est imposé et ce redimensionnement n'a plus lieu, si bien
+      // que le clavier recouvrait le pied de page et le dernier champ sans
+      // qu'aucun défilement puisse les dégager.
+      //
+      // Le déplacement se calcule par l'empiètement réellement mesuré à
+      // l'écran, donc là où la fenêtre est encore redimensionnée l'empiètement
+      // vaut zéro : pas de double compensation.
+      behavior="padding"
       style={[styles.fill, { backgroundColor: theme.colors.background }]}
     >
       <ScrollView
